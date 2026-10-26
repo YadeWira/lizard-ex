@@ -26,6 +26,13 @@
     <IntDir>$(SolutionDir)bin\obj\$(RootNamespace)_$(Platform)_$(Configuration)\</IntDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <!-- Build with the toolset of the installed Visual Studio instead of the
+       VS2010 one (v100), which no current machine has.  Building with VS2010
+       itself still works: DefaultPlatformToolset is empty there, and the
+       v100 default is kept. -->
+  <PropertyGroup Label="Configuration">
+    <PlatformToolset Condition="'$(DefaultPlatformToolset)' != ''">$(DefaultPlatformToolset)</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
