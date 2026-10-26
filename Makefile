@@ -49,7 +49,7 @@ EXT =
 endif
 
 
-.PHONY: default all lib lizard clean test versionsTest examples
+.PHONY: default all lib lizard clean test test-fast test-interop test-valgrind test-poisoned-heap versionsTest examples
 
 default: lizard
 
@@ -89,6 +89,19 @@ travis-install:
 	$(MAKE) -j1 install PREFIX=~/install_test_dir
 
 test:
+	$(MAKE) -C $(TESTDIR) $@
+
+# Bounded suites.  See tests/test-fast.sh and tests/test_interop.sh.
+test-fast:
+	$(MAKE) -C $(TESTDIR) $@
+
+test-interop:
+	$(MAKE) -C $(TESTDIR) $@
+
+test-valgrind:
+	$(MAKE) -C $(TESTDIR) $@
+
+test-poisoned-heap:
 	$(MAKE) -C $(TESTDIR) $@
 
 clangtest: clean

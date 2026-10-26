@@ -254,6 +254,24 @@ test-lizard: lizard datagen test-lizard-basic test-lizard-multiple test-lizard-s
           test-lizard-frame-concatenation test-lizard-testmode test-lizard-contentSize \
           test-lizard-hugefile
 
+# Bounded subset of the suite: no multi-gigabyte cases, safe for CI and for a
+# developer machine.  See tests/test-fast.sh.
+test-fast:
+	./test-fast.sh
+
+# Cross-build interoperability: every build must decode every other build's
+# streams, and builds of the same pointer width must agree byte for byte.
+# Needs the toolchains described in tests/build-matrix.sh.
+test-interop:
+	./build-matrix.sh ../build-matrix
+	./test_interop.sh ../build-matrix/*
+
+test-valgrind:
+	./test-valgrind.sh
+
+test-poisoned-heap:
+	./test-poisoned-heap.sh
+
 test-lizardc: lizardc datagen
 	@echo "\n ---- test lizardc version ----"
 	./datagen -g256MB | $(PRGDIR)/lizardc -l -v    | $(PRGDIR)/lizardc   -t

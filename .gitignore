@@ -23,6 +23,9 @@ lizard
 *.user
 .clang_complete
 
+# Cross-build output of tests/build-matrix.sh
+build-matrix/
+
 # Directories
 _lizardbench/
 _visual/
