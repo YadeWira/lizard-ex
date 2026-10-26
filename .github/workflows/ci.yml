@@ -53,6 +53,9 @@ jobs:
         env:
           CC: ${{ matrix.cc }}
           CFLAGS: ${{ matrix.cflags }}
+          # The sanitizer builds run the reduced suite; everything else runs it
+          # whole.
+          LIZARD_QUICK: ${{ contains(matrix.cflags, 'sanitize') && '1' || '0' }}
 
   # ---------------------------------------------------------------------------
   # Linux i386: the 32-bit build is a separate code path (size_t is 32 bits),
@@ -152,10 +155,15 @@ jobs:
 
       - name: Install cross toolchains and runners
         run: |
+          # gcc-multilib and gcc-aarch64-linux-gnu cannot be installed in the
+          # same Ubuntu image (their libc-dev packages collide), so the 32-bit
+          # build uses the i686 cross compiler here; build-matrix.sh picks it
+          # automatically when gcc -m32 is not available.
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y gcc-multilib gcc-aarch64-linux-gnu qemu-user-static \
-                                  mingw-w64 wine
+          sudo apt-get install -y gcc-i686-linux-gnu gcc-aarch64-linux-gnu \
+                                  qemu-user qemu-user-static \
+                                  gcc-mingw-w64-i686 gcc-mingw-w64-x86-64 wine
 
       - name: Build the matrix
         run: sh tests/build-matrix.sh build-matrix

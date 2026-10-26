@@ -45,7 +45,13 @@ runner_for() {
     esac
     if [ -z "$r" ] && command -v file >/dev/null 2>&1; then
         if file -b "$bin" 2>/dev/null | grep -qi 'ARM aarch64'; then
-            r=${QEMU_AARCH64:-"qemu-aarch64 -L /usr/aarch64-linux-gnu"}
+            if [ -n "${QEMU_AARCH64:-}" ]; then
+                r=$QEMU_AARCH64
+            elif command -v qemu-aarch64 >/dev/null 2>&1; then
+                r="qemu-aarch64 -L /usr/aarch64-linux-gnu"
+            else
+                r="qemu-aarch64-static -L /usr/aarch64-linux-gnu"
+            fi
         fi
     fi
     printf '%s' "$r"

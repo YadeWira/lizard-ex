@@ -50,7 +50,16 @@ failed=0
 for t in linux-x64 linux-i386 linux-arm64 win-x64 win-x86; do
     case $t in
         linux-x64)   cc=gcc;                   ext="" ;;
-        linux-i386)  cc="gcc -m32";            ext="" ;;
+        linux-i386)
+            # Prefer the native multilib build; on hosts without
+            # gcc-multilib (Ubuntu CI, for instance) the i686 cross
+            # compiler produces the same binary.
+            if toolchain_ok "gcc -m32"; then
+                cc="gcc -m32"
+            else
+                cc=i686-linux-gnu-gcc
+            fi
+            ext="" ;;
         linux-arm64) cc=aarch64-linux-gnu-gcc; ext="" ;;
         win-x64)     cc=x86_64-w64-mingw32-gcc; ext=".exe" ;;
         win-x86)     cc=i686-w64-mingw32-gcc;   ext=".exe" ;;
