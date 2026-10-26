@@ -1,0 +1,26 @@
+lizard-ex v2.2 (unreleased)
+Maintenance release.  The compressed format, the API and the compression
+levels are unchanged.
+
+Build and CI:
+- GitHub Actions replaces the Azure Pipelines and AppVeyor configuration, which
+  pointed at accounts that no longer build this tree.  Every push builds Linux
+  x86_64 (gcc and clang), Linux i386, Linux arm64, Windows x86 and x86_64 with
+  MSVC, and macOS arm64, and runs the bounded test suite on each of them.
+- The bounded suite is `test-fast` (fuzzer, frame tester, fullbench, command
+  line cases), plus ASan, UBSan, valgrind (`test-valgrind`) and a poisoned-heap
+  run (`test-poisoned-heap`).  The multi-gigabyte cases stay in `make test`.
+- Warnings: the tree builds with -Werror under gcc and clang, and with
+  -Wconversion under clang, on the platforms above.
+
+Compatibility:
+- `tests/test_interop.sh` is new.  It builds lizard for every target whose
+  toolchain is present and checks that every stream decodes with every build,
+  and that builds of the same pointer width produce identical bytes.  On the
+  hosts tested, the 64-bit builds (linux x86_64, linux arm64, windows x64)
+  agree byte for byte, and the 32-bit builds (linux i386, windows x86) agree
+  with each other and differ from the 64-bit builds at six levels, which is
+  expected: the match finder works on offsets, so the word size changes which
+  matches are chosen, not the format.
+
+No library or command line behaviour changed in this release.

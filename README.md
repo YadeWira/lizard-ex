@@ -1,5 +1,60 @@
+lizard-ex - the maintained line of Lizard
+--------------------------------------------------------
+
+**lizard-ex** is the maintenance line of [Lizard], the compressor with very fast
+decompression.  The code base is Lizard 2.1, with its API and its block and
+frame formats **unchanged**: anything that reads or writes Lizard 2.1 streams
+keeps working, and a stream written here decodes with Lizard 2.1 and the other
+way round.
+
+What this line adds is the part a library needs to stay usable:
+
+- **A build and test matrix that is actually run.**  Linux x86, x86_64 and
+  arm64, Windows x86 and x86_64 (MSVC), macOS arm64.  Every push builds all of
+  them, runs the bounded test suite (fuzzer, frame tester, fullbench, the
+  command line cases) and runs ASan, UBSan and valgrind.
+- **A portability guarantee that is checked, not assumed.**  Every stream
+  produced by any of those builds must decode with all the others, and builds
+  that share a pointer width must produce identical bytes.  `make test-interop`
+  does exactly that with the binaries of all five targets.
+- **Compression that does not depend on the state of the heap.**
+  `make test-poisoned-heap` proves the output is a function of the input only.
+- **Fixes for the defects the matrix finds.**  See [`NEWS`](NEWS).
+
+Lizard the algorithm is not changed here: the compressed format, the levels and
+the tuning stay exactly as they were.  If you are looking for a new compressor,
+read the note from the original author below; zstd covers what Lizard used to
+cover in 2017.  If you have data compressed with Lizard, or a build of an old
+Lizard that no longer compiles on your toolchain, this is the line to use.
+
+| Component | Status |
+|-----------|--------|
+| CI (Linux x86/x64/arm64, Windows x86/x64, macOS arm64) | [![CI][ciBadge]][ciLink] |
+
+Quick start
+--------------------------------------------------------
+
+```sh
+make                       # lib/liblizard.{a,so} and programs/lizard
+make test-fast             # bounded regression suite, a few minutes
+make test-interop          # cross-build stream compatibility (needs cross toolchains)
+programs/lizard -29 file   # compress to file.liz
+programs/lizard -d file.liz
+```
+
+```c
+#include "lizard_compress.h"
+#include "lizard_decompress.h"
+
+int bound = Lizard_compressBound(srcSize);
+int csize = Lizard_compress(src, dst, srcSize, bound, 29);
+int dsize = Lizard_decompress_safe(dst, out, csize, outCapacity);
+```
+
 Lizard - efficient compression with very fast decompression
 --------------------------------------------------------
+
+The rest of this file describes the algorithm as the original author wrote it.
 
 Lizard (formerly LZ5) is a lossless compression algorithm which contains 4 compression methods:
 - fastLZ4 : compression levels -10...-19 are designed to give fast decompression speed
@@ -12,12 +67,9 @@ Lizard library is provided as open-source software using BSD 2-Clause license.
 The high compression/decompression speed is achieved without any SSE and AVX extensions.
 
 
-|Status   |
-|---------|
-| [![Build Status][AzurePipelinesMasterBadge]][AzurePipelinesLink] |
-
-[AzurePipelinesMasterBadge]: https://dev.azure.com/inikep/lzbench/_apis/build/status%2Finikep.lizard?branchName=lizard "gcc and clang tests"
-[AzurePipelinesLink]: https://dev.azure.com/inikep/lzbench/_build/latest?definitionId=11&branchName=lizard
+[Lizard]: https://github.com/inikep/lizard
+[ciBadge]: https://github.com/YadeWira/lizard-ex/actions/workflows/ci.yml/badge.svg "Continuous Integration"
+[ciLink]: https://github.com/YadeWira/lizard-ex/actions/workflows/ci.yml
 
 [LZ4]: https://github.com/lz4/lz4
 [zlib]: https://github.com/madler/zlib
