@@ -1,0 +1,192 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Linux x86_64: compiler warnings, sanitizers and the bounded test suite.
+  # ---------------------------------------------------------------------------
+  linux:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gcc
+            cc: gcc
+            cflags: ''
+          - name: gcc -Werror
+            cc: gcc
+            cflags: '-Werror'
+          - name: clang -Werror
+            cc: clang
+            cflags: '-Werror'
+          - name: clang -Wconversion
+            cc: clang
+            cflags: '-Werror -Wconversion -Wno-sign-conversion'
+          - name: clang UBSan
+            cc: clang
+            cflags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'
+          - name: gcc ASan+UBSan
+            cc: gcc
+            cflags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build library and program
+        run: make clean && make all CC=${{ matrix.cc }} CFLAGS="${{ matrix.cflags }}"
+
+      - name: Bounded test suite
+        run: sh tests/test-fast.sh
+        env:
+          CC: ${{ matrix.cc }}
+          CFLAGS: ${{ matrix.cflags }}
+
+  # ---------------------------------------------------------------------------
+  # Linux i386: the 32-bit build is a separate code path (size_t is 32 bits),
+  # and it produces different streams than the 64-bit build on purpose.
+  # ---------------------------------------------------------------------------
+  linux-32bit:
+    name: linux i386 (gcc -m32)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gcc-multilib
+        run: sudo apt-get update && sudo apt-get install -y gcc-multilib
+
+      - name: Build
+        run: make clean && make all CC="gcc -m32"
+
+      - name: Bounded test suite
+        run: sh tests/test-fast.sh
+        env:
+          CC: gcc -m32
+
+  # ---------------------------------------------------------------------------
+  # Linux arm64: a real arm64 runner, not emulation, so the timings and the
+  # unaligned access behaviour are the ones users see.
+  # ---------------------------------------------------------------------------
+  linux-arm64:
+    name: linux arm64
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make clean && make all
+
+      - name: Bounded test suite
+        run: sh tests/test-fast.sh
+
+  # ---------------------------------------------------------------------------
+  # macOS arm64.
+  # ---------------------------------------------------------------------------
+  macos:
+    name: macos arm64
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make clean && make all CC=clang
+
+      - name: Bounded test suite
+        run: sh tests/test-fast.sh
+        env:
+          CC: clang
+
+  # ---------------------------------------------------------------------------
+  # Windows: the MSVC solution, for both x64 and Win32.
+  # ---------------------------------------------------------------------------
+  windows:
+    name: windows msvc
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x64, Win32]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build
+        shell: cmd
+        run: msbuild visual\VS2010\lizard.sln /p:Configuration=Release /p:Platform=${{ matrix.platform }} /v:minimal
+
+      - name: Round-trip and levels
+        shell: cmd
+        run: |
+          cd visual\VS2010\bin\${{ matrix.platform }}_Release
+          datagen.exe -g4M | lizard.exe -10 | lizard.exe -t
+          datagen.exe -g4M | lizard.exe -19 | lizard.exe -t
+          datagen.exe -g4M -P50 | lizard.exe -20 | lizard.exe -t
+          datagen.exe -g4M -P50 | lizard.exe -29 | lizard.exe -t
+          datagen.exe -g4M -P50 | lizard.exe -30 | lizard.exe -t
+          datagen.exe -g4M -P50 | lizard.exe -39 | lizard.exe -t
+          datagen.exe -g4M -P50 | lizard.exe -40 | lizard.exe -t
+          datagen.exe -g1M -P99 | lizard.exe -49 | lizard.exe -t
+
+  # ---------------------------------------------------------------------------
+  # Interoperability: every stream must decode with every build, and builds
+  # that share a pointer width must produce identical bytes.  This is the
+  # cross-platform guarantee of the project.
+  # ---------------------------------------------------------------------------
+  interop:
+    name: interop (32/64-bit, linux/windows, x86/arm64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cross toolchains and runners
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib gcc-aarch64-linux-gnu qemu-user-static \
+                                  mingw-w64 wine
+
+      - name: Build the matrix
+        run: sh tests/build-matrix.sh build-matrix
+
+      - name: Interoperability test
+        run: sh tests/test_interop.sh build-matrix/*
+
+  # ---------------------------------------------------------------------------
+  # valgrind: memory errors on the paths the tests exercise.
+  # ---------------------------------------------------------------------------
+  valgrind:
+    name: valgrind
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install valgrind
+        run: sudo apt-get update && sudo apt-get install -y valgrind
+
+      - name: Memory checker run
+        run: sh tests/test-valgrind.sh
+
+  # ---------------------------------------------------------------------------
+  # Poisoned heap: compression must not depend on uninitialised memory, so a
+  # recycled heap may not change the output.
+  # ---------------------------------------------------------------------------
+  poisoned-heap:
+    name: poisoned heap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compression must be deterministic
+        run: sh tests/test-poisoned-heap.sh
