@@ -20,6 +20,12 @@ FORCE_INLINE int Lizard_decompress_LZ4(
 {
     /* Local Variables */
     int inputSize = (int)(ctx->flagsEnd - ctx->flagsPtr);
+
+    /* Special cases */
+    /* Before any pointer arithmetic: with an empty output buffer op is NULL
+       and op + 0 is undefined, and the same goes for lowPrefix - dictSize. */
+    if (unlikely(outputSize==0)) return ((inputSize==1) && (*ctx->flagsPtr==0)) ? 0 : -1;  /* Empty output buffer */
+
     const BYTE* const blockBase = ctx->flagsPtr;
     const BYTE* const iend = ctx->literalsEnd;
     BYTE* op = dest;
@@ -33,9 +39,6 @@ FORCE_INLINE int Lizard_decompress_LZ4(
 
     intptr_t length = 0;
     (void)compressionLevel;
-
-    /* Special cases */
-    if (unlikely(outputSize==0)) return ((inputSize==1) && (*ctx->flagsPtr==0)) ? 0 : -1;  /* Empty output buffer */
 
     /* Main Loop : decode sequences */
     while (ctx->flagsPtr < ctx->flagsEnd) {

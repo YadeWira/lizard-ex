@@ -188,9 +188,12 @@ FORCE_INLINE size_t Lizard_get_price_LIZv1(Lizard_stream_t* const ctx, int rep, 
     size_t price = 0;
     BYTE token = 0;
 #ifndef LIZARD_NO_HUFFMAN
-    const BYTE* literals = ip - litLength;
     U32 u;
     if ((ctx->huffType) && (ctx->params.parserType != Lizard_parser_lowestPrice)) {
+        /* Only computed here: with the lowest price parser the literals are
+           not priced, and ip - litLength can fall before the start of the
+           buffer, which is undefined even when the result is never used. */
+        const BYTE* literals = ip - litLength;
         if (ctx->cachedLiterals == literals && litLength >= ctx->cachedLitLength) {
             size_t const additional = litLength - ctx->cachedLitLength;
             const BYTE* literals2 = ctx->cachedLiterals + ctx->cachedLitLength;

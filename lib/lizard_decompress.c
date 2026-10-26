@@ -306,7 +306,9 @@ int Lizard_setStreamDecode (Lizard_streamDecode_t* Lizard_streamDecode, const ch
 {
     Lizard_streamDecode_t* lizardsd = (Lizard_streamDecode_t*) Lizard_streamDecode;
     lizardsd->prefixSize = (size_t) dictSize;
-    lizardsd->prefixEnd = (const BYTE*) dictionary + dictSize;
+    /* A size of 0 is allowed and callers pass NULL for it; NULL + 0 is
+       undefined, so the pointer is only advanced when there is a dictionary. */
+    lizardsd->prefixEnd = dictionary ? (const BYTE*) dictionary + dictSize : NULL;
     lizardsd->externalDict = NULL;
     lizardsd->extDictSize  = 0;
     return 1;
@@ -325,14 +327,17 @@ int Lizard_decompress_safe_continue (Lizard_streamDecode_t* Lizard_streamDecode,
     int result;
 
     if (lizardsd->prefixEnd == (BYTE*)dest) {
+        /* prefixEnd - prefixSize is NULL - 0 while there is no history yet,
+           which is undefined; the pointer is only moved when there is one. */
+        const BYTE* const prefix = lizardsd->prefixSize ? lizardsd->prefixEnd - lizardsd->prefixSize : lizardsd->prefixEnd;
         result = Lizard_decompress_generic(source, dest, compressedSize, maxOutputSize,
-                                        full, 0, usingExtDict, lizardsd->prefixEnd - lizardsd->prefixSize, lizardsd->externalDict, lizardsd->extDictSize);
+                                        full, 0, usingExtDict, prefix, lizardsd->externalDict, lizardsd->extDictSize);
         if (result <= 0) return result;
         lizardsd->prefixSize += result;
         lizardsd->prefixEnd  += result;
     } else {
         lizardsd->extDictSize = lizardsd->prefixSize;
-        lizardsd->externalDict = lizardsd->prefixEnd - lizardsd->extDictSize;
+        lizardsd->externalDict = lizardsd->extDictSize ? lizardsd->prefixEnd - lizardsd->extDictSize : NULL;
         result = Lizard_decompress_generic(source, dest, compressedSize, maxOutputSize,
                                         full, 0, usingExtDict, (BYTE*)dest, lizardsd->externalDict, lizardsd->extDictSize);
         if (result <= 0) return result;

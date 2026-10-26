@@ -12,6 +12,33 @@ Build and CI:
   run (`test-poisoned-heap`).  The multi-gigabyte cases stay in `make test`.
 - Warnings: the tree builds with -Werror under gcc and clang, and with
   -Wconversion under clang, on the platforms above.
+- The Visual Studio projects build with the toolset of the installed Visual
+  Studio (`$(DefaultPlatformToolset)`) instead of requiring the VS2010 one
+  (v100), which no current machine has.  Building with VS2010 is unaffected.
+
+Undefined behaviour found by the new sanitizer runs and fixed:
+- `Lizard_highbit32(0)` called `__builtin_clz(0)`, which is undefined; the value
+  it returned depended on the compiler and on the code around the call.  The
+  price of a rep-offset match uses it as `Lizard_highbit32(offset)` with
+  `offset == 0` (levels 25, 29, 44 and 49 on the test corpus), so the parse
+  could differ between builds.  It now returns 0, which is what the MSVC
+  (`_BitScanReverse`) path always returned.  The output is unchanged on the
+  corpora tested, but a stream produced by an older build at those levels is
+  not guaranteed to be identical, because the value was undefined.
+- `LizardF_compressUpdate()` did pointer arithmetic on the temporary
+  dictionary of the one-shot path, where it is NULL on purpose, before checking
+  `autoFlush`.
+- `LizardF_decompress()` added the buffer sizes to `srcBuffer`/`dstBuffer`
+  before the "nothing to do" case, which is `NULL + 0` when a caller probes the
+  API with empty buffers.
+- `Lizard_decompress_LIZv1()` / `LZ4()` computed `op + outputSize`,
+  `op + targetOutputSize`, `lowPrefix - dictSize` and `dictStart + dictSize`
+  before the empty-output early return, and `Lizard_get_price_LIZv1()` computed
+  `ip - litLength` although the lowest price parser never reads it.  The
+  results were unused but the arithmetic is undefined.
+- `Lizard_setStreamDecode(NULL, 0)` and `Lizard_decompress_safe_continue()`
+  advanced a null pointer by the dictionary sizes; empty buffers are a
+  supported case of both functions.
 
 Compatibility:
 - `tests/test_interop.sh` is new.  It builds lizard for every target whose
@@ -23,4 +50,4 @@ Compatibility:
   expected: the match finder works on offsets, so the word size changes which
   matches are chosen, not the format.
 
-No library or command line behaviour changed in this release.
+The API and the command line are unchanged.

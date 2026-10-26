@@ -396,6 +396,12 @@ MEM_STATIC void Lizard_wildCopy16(BYTE* dstPtr, const BYTE* srcPtr, BYTE* dstEnd
 ****************************************/
 MEM_STATIC U32 Lizard_highbit32(U32 val) NO_SANITIZE_MEMORY
 {
+    /* __builtin_clz(0) is undefined and the value it returns changes with the
+       compiler and the surrounding code, which changes the price of a match
+       and therefore the compressed output.  Lizard_get_price_LIZv1() reaches
+       this with val==0 for a rep-offset match, so define the case; the MSVC
+       path has always returned 0 for it. */
+    if (val == 0) return 0;
 #   if defined(_MSC_VER)   /* Visual */
     unsigned long r=0;
     _BitScanReverse(&r, val);
