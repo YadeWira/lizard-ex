@@ -117,19 +117,21 @@ jobs:
   windows-build:
     name: windows build (mingw)
     runs-on: ubuntu-latest
+    # A container instead of the runner image: no unattended-upgrades holding
+    # the dpkg lock (apt in the runner hung repeatedly), and buildpack-deps
+    # already has git, gcc and make, so only the cross compilers are installed.
+    container: buildpack-deps:noble
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.REF }}
           path: src
 
-      - name: Install mingw-w64
-        timeout-minutes: 15
+      - name: Install build tools and mingw-w64
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo systemctl stop unattended-upgrades 2>/dev/null || true
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-              -o DPkg::Lock::Timeout=600 -o Acquire::Retries=3 \
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
               gcc-mingw-w64-x86-64 gcc-mingw-w64-i686
 
       - name: Build both architectures
