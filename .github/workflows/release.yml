@@ -99,10 +99,10 @@ jobs:
           cp src/programs/lizard src/programs/lizard.1 src/README.md src/NEWS "$d"/
           cp src/lib/LICENSE "$d/LICENSE-lib"
           cp src/programs/COPYING "$d/COPYING-programs"
-          # Reproducible archive: sorted entries, fixed owner and timestamp.
+          # Reproducible archive; make_archive.py instead of tar because macOS
+          # ships bsdtar, which does not have the GNU options that do this.
           epoch=$(git -C src log -1 --format=%ct)
-          tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="@$epoch" \
-              -czf "$d.tar.gz" "$d"
+          python3 current/tests/make_archive.py "$d" "$d.tar.gz" "$epoch"
 
       - uses: actions/upload-artifact@v4
         with:

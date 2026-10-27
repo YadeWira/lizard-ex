@@ -93,10 +93,10 @@ find "$STAGE" -type f | LC_ALL=C sort | xargs sha256sum > "$TARBALL.sha256"
 echo "==> packaging $TARBALL"
 # Reproducible archive: the same commit gives the same tarball.  Entries are
 # sorted and carry a fixed owner and timestamp, taken from SOURCE_DATE_EPOCH
-# or from the commit itself.
+# or from the commit itself.  Done in Python because macOS ships bsdtar, which
+# does not have the GNU tar options that would do it in one line.
 EPOCH=${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || date +%s)}
-tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="@$EPOCH" \
-    -czf "$TARBALL" "$STAGE"
+python3 tests/make_archive.py "$STAGE" "$TARBALL" "$EPOCH"
 rm -rf "$STAGE"
 
 echo
