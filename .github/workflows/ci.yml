@@ -26,36 +26,39 @@ jobs:
         include:
           - name: gcc
             cc: gcc
-            cflags: ''
+            moreflags: ''
           - name: gcc -Werror
             cc: gcc
-            cflags: '-Werror'
+            moreflags: '-Werror'
           - name: clang -Werror
             cc: clang
-            cflags: '-Werror'
+            moreflags: '-Werror'
           - name: clang -Wconversion
             cc: clang
-            cflags: '-Werror -Wconversion -Wno-sign-conversion'
+            moreflags: '-Werror -Wconversion -Wno-sign-conversion'
           - name: clang UBSan
             cc: clang
-            cflags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'
+            moreflags: '-O1 -g -fsanitize=undefined -fno-sanitize-recover=all'
           - name: gcc ASan+UBSan
             cc: gcc
-            cflags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+            moreflags: '-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
     steps:
       - uses: actions/checkout@v4
 
+      # MOREFLAGS is what the Makefiles append to their own warning set, so the
+      # -Werror jobs check the same warnings as a normal build.  Passing CFLAGS
+      # on the command line would replace them.
       - name: Build library and program
-        run: make clean && make all CC=${{ matrix.cc }} CFLAGS="${{ matrix.cflags }}"
+        run: make clean && make all CC=${{ matrix.cc }} MOREFLAGS="${{ matrix.moreflags }}"
 
       - name: Bounded test suite
         run: sh tests/test-fast.sh
         env:
           CC: ${{ matrix.cc }}
-          CFLAGS: ${{ matrix.cflags }}
+          MOREFLAGS: ${{ matrix.moreflags }}
           # The sanitizer builds run the reduced suite; everything else runs it
           # whole.
-          LIZARD_QUICK: ${{ contains(matrix.cflags, 'sanitize') && '1' || '0' }}
+          LIZARD_QUICK: ${{ contains(matrix.moreflags, 'sanitize') && '1' || '0' }}
 
   # ---------------------------------------------------------------------------
   # Linux i386: the 32-bit build is a separate code path (size_t is 32 bits),
