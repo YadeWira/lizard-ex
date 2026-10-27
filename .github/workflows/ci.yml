@@ -141,7 +141,7 @@ jobs:
           # the recommended packages (fonts, mono, gecko) are hundreds of
           # megabytes and nothing here needs them.
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-              gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine64 wine32
+              gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine wine64 wine32
 
       - name: Build
         run: make windows WINCC=${{ matrix.wincc }}
@@ -171,9 +171,10 @@ jobs:
           sudo dpkg --add-architecture i386
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-                                  gcc-i686-linux-gnu gcc-aarch64-linux-gnu \
+                                  gcc-i686-linux-gnu libc6-dev-i386-cross \
+                                  gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
                                   qemu-user qemu-user-static \
-                                  gcc-mingw-w64-i686 gcc-mingw-w64-x86-64 wine64 wine32
+                                  gcc-mingw-w64-i686 gcc-mingw-w64-x86-64 wine wine64 wine32
 
       - name: Build the matrix
         run: sh tests/build-matrix.sh build-matrix

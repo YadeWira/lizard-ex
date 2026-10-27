@@ -36,6 +36,9 @@ build() { # name compiler extension
     name=$1; cc=$2; ext=$3
     rm -rf "$WORK/tree"
     cp -a "$ROOT" "$WORK/tree" || return 1
+    # A working copy can carry objects from an earlier build with another
+    # compiler; mixing them is what "file format not recognized" means.
+    ( cd "$WORK/tree" && make clean ) >/dev/null 2>&1
     if ( cd "$WORK/tree/programs" && make lizard CC="$cc" ) >"$WORK/log" 2>&1; then
         cp "$WORK/tree/programs/lizard$ext" "$OUT/$name$ext" || return 1
         printf '  %-12s %s\n' "$name" "$($cc --version 2>/dev/null | head -1)"
@@ -65,7 +68,11 @@ for t in linux-x64 linux-i386 linux-arm64 win-x64 win-x86; do
         win-x86)     cc=i686-w64-mingw32-gcc;   ext=".exe" ;;
     esac
     if ! toolchain_ok "$cc"; then
-        echo "  $t: skipped (toolchain not found: $cc)"
+        if command -v ${cc%% *} >/dev/null 2>&1; then
+            echo "  $t: skipped ($cc is installed but cannot build a trivial program)"
+        else
+            echo "  $t: skipped (compiler not found: ${cc%% *})"
+        fi
         continue
     fi
     build "$t" "$cc" "$ext" || failed=$((failed + 1))

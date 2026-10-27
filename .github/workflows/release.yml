@@ -136,7 +136,7 @@ jobs:
           # the recommended packages (fonts, mono, gecko) are hundreds of
           # megabytes and nothing here needs them.
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-              gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine64 wine32 zip
+              gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine wine64 wine32 zip
 
       - name: Build the program and the test data generator
         run: make -C src windows WINCC=${{ matrix.wincc }}
