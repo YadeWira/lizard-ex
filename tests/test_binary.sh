@@ -41,9 +41,19 @@ runner_for() {
     case $1 in
         *.exe|*.EXE) echo wine ;;
         *)
-            if command -v file >/dev/null 2>&1 && file -b "$1" 2>/dev/null | grep -qi 'ARM aarch64'; then
-                echo "qemu-aarch64 -L /usr/aarch64-linux-gnu"
-            fi
+            # An aarch64 binary needs qemu only when it cannot run natively.
+            case $(uname -m) in
+                aarch64|arm64) ;;
+                *)
+                    if command -v file >/dev/null 2>&1 && file -b "$1" 2>/dev/null | grep -qi 'ARM aarch64'; then
+                        if command -v qemu-aarch64 >/dev/null 2>&1; then
+                            echo "qemu-aarch64 -L /usr/aarch64-linux-gnu"
+                        else
+                            echo "qemu-aarch64-static -L /usr/aarch64-linux-gnu"
+                        fi
+                    fi
+                    ;;
+            esac
             ;;
     esac
 }
