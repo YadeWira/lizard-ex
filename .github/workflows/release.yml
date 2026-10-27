@@ -1,0 +1,188 @@
+name: Release binaries
+
+# Builds the lizard program for every supported system, checks each binary with
+# tests/test_binary.sh, and attaches the archives and SHA256SUMS to the release.
+#
+#   release published   build the release's tag and attach the archives to it
+#   workflow_dispatch   build a given tag; attach only if 'upload' is set
+#   push of this file   dry run: build and test, keep the archives as artifacts
+#
+# The binaries are built from the tag, not from the default branch, so a release
+# can be reproduced later.
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (for example v2.2.0)'
+        required: true
+      upload:
+        description: 'Attach the archives to that release'
+        type: boolean
+        default: false
+  push:
+    paths: [ '.github/workflows/release.yml' ]
+
+permissions:
+  contents: write
+
+env:
+  REF: ${{ github.event.release.tag_name || inputs.tag || github.sha }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Linux and macOS.  The Linux binaries are static, so they run on any
+  # distribution of that architecture; macOS links against the system libc and
+  # declares the oldest version it supports.
+  # ---------------------------------------------------------------------------
+  unix:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            flags: 'LDFLAGS=-static'
+            minver: ''
+          - name: linux-i386
+            os: ubuntu-latest
+            flags: 'LDFLAGS=-static CC="gcc -m32"'
+            packages: gcc-multilib
+            minver: ''
+          - name: linux-arm64
+            os: ubuntu-24.04-arm
+            flags: 'LDFLAGS=-static'
+            minver: ''
+          - name: macos-arm64
+            os: macos-latest
+            flags: 'CC="clang -mmacosx-version-min=11.0"'
+            minver: '11.0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+          # tests/test_binary.sh comes from this commit, so an older tag is
+          # checked with the current tests too.
+          path: src
+      - uses: actions/checkout@v4
+        with:
+          path: current
+
+      - name: Install packages
+        if: matrix.packages
+        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.packages }}
+
+      - name: Build the program and the test data generator
+        run: |
+          make -C src/programs lizard ${{ matrix.flags }}
+          make -C src/tests datagen ${{ matrix.flags }}
+          file src/programs/lizard
+
+      - name: Check the binary
+        run: bash current/tests/test_binary.sh src/programs/lizard src/tests/datagen
+
+      - name: Package
+        run: |
+          ver=$(awk '/define LIZARD_VERSION_MAJOR/{a=$3}
+                      /define LIZARD_VERSION_MINOR/{b=$3}
+                      /define LIZARD_VERSION_RELEASE/{c=$3}
+                      END{print a"."b"."c}' src/lib/lizard_compress.h)
+          d=lizard-ex-$ver-${{ matrix.name }}
+          mkdir "$d"
+          cp src/programs/lizard src/programs/lizard.1 src/README.md src/NEWS "$d"/
+          cp src/lib/LICENSE "$d/LICENSE-lib"
+          cp src/programs/COPYING "$d/COPYING-programs"
+          tar czf "$d.tar.gz" "$d"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: lizard-ex-*.tar.gz
+
+  # ---------------------------------------------------------------------------
+  # Windows: the MSVC solution, x64 and x86.  The projects link the C runtime
+  # statically, so the exe needs no redistributable.
+  # ---------------------------------------------------------------------------
+  windows:
+    name: windows-${{ matrix.arch }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            platform: x64
+          - arch: x86
+            platform: Win32
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+          path: src
+      - uses: actions/checkout@v4
+        with:
+          path: current
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build the program and the test data generator
+        shell: cmd
+        run: |
+          msbuild src\visual\VS2010\lizard\lizard.vcxproj /p:Configuration=Release /p:Platform=${{ matrix.platform }} /p:SolutionDir=%CD%\src\visual\VS2010\ /v:minimal
+          msbuild src\visual\VS2010\datagen\datagen.vcxproj /p:Configuration=Release /p:Platform=${{ matrix.platform }} /p:SolutionDir=%CD%\src\visual\VS2010\ /v:minimal
+
+      - name: Check the binary
+        shell: bash
+        run: |
+          bash current/tests/test_binary.sh \
+            src/visual/VS2010/bin/${{ matrix.platform }}_Release/lizard.exe \
+            src/visual/VS2010/bin/${{ matrix.platform }}_Release/datagen.exe
+
+      - name: Package
+        shell: bash
+        run: |
+          ver=$(awk '/define LIZARD_VERSION_MAJOR/{a=$3}
+                      /define LIZARD_VERSION_MINOR/{b=$3}
+                      /define LIZARD_VERSION_RELEASE/{c=$3}
+                      END{print a"."b"."c}' src/lib/lizard_compress.h | tr -d '\r')
+          d=lizard-ex-$ver-windows-${{ matrix.arch }}
+          mkdir "$d"
+          cp "src/visual/VS2010/bin/${{ matrix.platform }}_Release/lizard.exe" src/README.md src/NEWS "$d"/
+          cp src/lib/LICENSE "$d/LICENSE-lib.txt"
+          cp src/programs/COPYING "$d/COPYING-programs.txt"
+          7z a -tzip "$d.zip" "$d" > /dev/null
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}
+          path: lizard-ex-*.zip
+
+  # ---------------------------------------------------------------------------
+  # Checksums and upload.
+  # ---------------------------------------------------------------------------
+  attach:
+    name: checksums and upload
+    needs: [ unix, windows ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: SHA256SUMS
+        run: cd dist && sha256sum lizard-ex-* > SHA256SUMS && cat SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: all-binaries
+          path: dist/*
+
+      - name: Attach to the release
+        if: github.event_name == 'release' || inputs.upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$REF" dist/* --clobber -R "$GITHUB_REPOSITORY"

@@ -42,3 +42,7 @@ _codelite_lz4/
 
 # backups, old versions
 *~
+
+# Release artefacts (make-release.sh)
+lizard-ex-*.tar.gz
+lizard-ex-*.tar.gz.sha256
