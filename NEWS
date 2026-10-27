@@ -9,10 +9,11 @@ Build and CI:
   macOS arm64, and runs the bounded test suite on each of them.
 - Windows builds no longer need Visual Studio.  `make windows` (and
   `make windows WINCC=i686-w64-mingw32-gcc` for x86) cross-compiles a statically
-  linked lizard.exe with mingw-w64, and that is what CI builds, what the
-  interoperability test runs under wine, and what the release ships.  The MSVC
-  projects in visual/ are still in the tree and still build, but nothing
-  depends on them.
+  linked lizard.exe with mingw-w64; that is what the release ships.  CI builds
+  both architectures on Linux and then runs the 234 checks of
+  tests/test_binary.sh on a real Windows runner, so neither the build nor the
+  test needs wine or Visual Studio.  The MSVC projects in visual/ are still in
+  the tree and still build, but nothing depends on them.
 - The bounded suite is `test-fast` (fuzzer, frame tester, fullbench, command
   line cases), plus ASan, UBSan, valgrind (`test-valgrind`) and a poisoned-heap
   run (`test-poisoned-heap`).  The multi-gigabyte cases stay in `make test`.

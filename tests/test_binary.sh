@@ -37,9 +37,19 @@ checks=0
 
 # The binary may need a runner: a *.exe is a Windows program, and an aarch64
 # ELF runs under qemu on an x86 host.
+on_windows_host() {
+    case $(uname -s) in
+        MINGW*|MSYS*|CYGWIN*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 runner_for() {
     case $1 in
-        *.exe|*.EXE) echo wine ;;
+        *.exe|*.EXE)
+            # On Windows the program runs natively; elsewhere it needs wine.
+            if on_windows_host; then echo ""; else echo wine; fi
+            ;;
         *)
             # An aarch64 binary needs qemu only when it cannot run natively.
             case $(uname -m) in

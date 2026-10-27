@@ -46,9 +46,10 @@ programs/lizard -d file.liz
 Windows does not need Visual Studio: `make windows` cross-compiles a statically
 linked `lizard.exe` with mingw-w64 from any POSIX host, and
 `make windows WINCC=i686-w64-mingw32-gcc` does the 32-bit one.  Those are the
-toolchains the Windows release binaries come from.  The MSVC projects in
-`visual/` are kept for people who build inside Visual Studio, but nothing in
-this line depends on them.
+toolchains the Windows release binaries come from, and CI runs the resulting
+binaries on a real Windows runner before they are attached to a release.  The
+MSVC projects in `visual/` are kept for people who build inside Visual Studio,
+but nothing in this line depends on them.
 
 ```c
 #include "lizard_compress.h"

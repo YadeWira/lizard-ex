@@ -115,54 +115,66 @@ jobs:
           CC: clang
 
   # ---------------------------------------------------------------------------
-  # Windows: built with mingw-w64 and run under wine.  This is the toolchain
-  # that produces the Windows release binaries, so it is what CI has to check;
-  # no Visual Studio is involved.
+  # Windows: cross-compiled on Linux with mingw-w64 (no Visual Studio), then
+  # run on a real Windows runner.  Splitting it this way keeps the build in one
+  # place and does not need wine in CI.
   # ---------------------------------------------------------------------------
-  windows:
-    name: windows mingw (${{ matrix.arch }})
+  windows-build:
+    name: windows build (mingw)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x64
-            wincc: x86_64-w64-mingw32-gcc
-          - arch: x86
-            wincc: i686-w64-mingw32-gcc
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install mingw-w64 and wine
-        timeout-minutes: 15
+      - name: Install mingw-w64
+        timeout-minutes: 10
         run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          # --no-install-recommends keeps this to the compilers and wine itself:
-          # the recommended packages (fonts, mono, gecko) are hundreds of
-          # megabytes and nothing here needs them.
-          # The runner's unattended-upgrades can hold the dpkg lock; wait for it
-          # instead of failing (or hanging) and retry the downloads.
-          sudo systemctl stop unattended-upgrades 2>/dev/null || true
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
               -o DPkg::Lock::Timeout=600 -o Acquire::Retries=3 \
-              gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine wine64 wine32
+              gcc-mingw-w64-x86-64 gcc-mingw-w64-i686
 
-      - name: Build
-        run: make windows WINCC=${{ matrix.wincc }}
+      - name: Build both architectures
+        run: |
+          make windows
+          mkdir -p dist/x64 dist/x86
+          cp programs/lizard.exe tests/datagen.exe dist/x64/
+          make windows WINCC=i686-w64-mingw32-gcc
+          cp programs/lizard.exe tests/datagen.exe dist/x86/
+          ls -l dist/*/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: dist
+
+  windows-check:
+    name: windows check (${{ matrix.arch }})
+    needs: windows-build
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, x86]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-binaries
+          path: dist
 
       - name: Check the binary
-        run: |
-          file programs/lizard.exe
-          WINEDEBUG=-all sh tests/test_binary.sh programs/lizard.exe tests/datagen.exe
+        shell: bash
+        run: bash tests/test_binary.sh "dist/${{ matrix.arch }}/lizard.exe" "dist/${{ matrix.arch }}/datagen.exe"
 
   # ---------------------------------------------------------------------------
   # Interoperability: every stream must decode with every build, and builds
   # that share a pointer width must produce identical bytes.  This is the
-  # cross-platform guarantee of the project.
+  # cross-platform guarantee of the project.  The Windows binaries are checked
+  # in the windows-check job, on real Windows, so this job covers the Linux
+  # targets: 32 vs 64 bits and x86 vs arm64.
   # ---------------------------------------------------------------------------
   interop:
-    name: interop (32/64-bit, linux/windows, x86/arm64)
+    name: interop (32/64-bit, x86/arm64)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -183,8 +195,7 @@ jobs:
               -o DPkg::Lock::Timeout=600 -o Acquire::Retries=3 \
                                   gcc-i686-linux-gnu libc6-dev-i386-cross \
                                   gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
-                                  qemu-user qemu-user-static \
-                                  gcc-mingw-w64-i686 gcc-mingw-w64-x86-64 wine wine64 wine32
+                                  qemu-user qemu-user-static
 
       - name: Build the matrix
         run: sh tests/build-matrix.sh build-matrix

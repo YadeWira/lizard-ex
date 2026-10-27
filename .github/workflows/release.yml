@@ -104,21 +104,48 @@ jobs:
           path: lizard-ex-*.tar.gz
 
   # ---------------------------------------------------------------------------
-  # Windows: mingw-w64 cross-compiled from Linux, statically linked, so the exe
-  # runs on a plain Windows install and no Visual Studio is involved anywhere in
-  # the release.
+  # Windows: cross-compiled on Linux with mingw-w64 (no Visual Studio anywhere
+  # in the release) and then checked on a real Windows runner, which is also
+  # where the archive is assembled.
   # ---------------------------------------------------------------------------
+  windows-build:
+    name: windows build (mingw)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REF }}
+          path: src
+
+      - name: Install mingw-w64
+        timeout-minutes: 10
+        run: |
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+              -o DPkg::Lock::Timeout=600 -o Acquire::Retries=3 \
+              gcc-mingw-w64-x86-64 gcc-mingw-w64-i686
+
+      - name: Build both architectures
+        run: |
+          make -C src windows
+          mkdir -p dist/x64 dist/x86
+          cp src/programs/lizard.exe src/tests/datagen.exe dist/x64/
+          make -C src windows WINCC=i686-w64-mingw32-gcc
+          cp src/programs/lizard.exe src/tests/datagen.exe dist/x86/
+          ls -l dist/*/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: dist
+
   windows:
     name: windows-${{ matrix.arch }}
-    runs-on: ubuntu-latest
+    needs: windows-build
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - arch: x64
-            wincc: x86_64-w64-mingw32-gcc
-          - arch: x86
-            wincc: i686-w64-mingw32-gcc
+        arch: [x64, x86]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -128,42 +155,30 @@ jobs:
         with:
           path: current
 
-      - name: Install mingw-w64, wine and zip
-        timeout-minutes: 15
-        run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          # --no-install-recommends keeps this to the compilers and wine itself:
-          # the recommended packages (fonts, mono, gecko) are hundreds of
-          # megabytes and nothing here needs them.
-          # The runner's unattended-upgrades can hold the dpkg lock; wait for it
-          # instead of failing (or hanging) and retry the downloads.
-          sudo systemctl stop unattended-upgrades 2>/dev/null || true
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-              -o DPkg::Lock::Timeout=600 -o Acquire::Retries=3 \
-              gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine wine64 wine32 zip
-
-      - name: Build the program and the test data generator
-        run: make -C src windows WINCC=${{ matrix.wincc }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-binaries
+          path: dist
 
       - name: Check the binary
+        shell: bash
         run: |
-          file src/programs/lizard.exe
-          WINEDEBUG=-all bash current/tests/test_binary.sh \
-            src/programs/lizard.exe src/tests/datagen.exe
+          bash current/tests/test_binary.sh \
+            "dist/${{ matrix.arch }}/lizard.exe" "dist/${{ matrix.arch }}/datagen.exe"
 
       - name: Package
+        shell: bash
         run: |
           ver=$(awk '/define LIZARD_VERSION_MAJOR/{a=$3}
                       /define LIZARD_VERSION_MINOR/{b=$3}
                       /define LIZARD_VERSION_RELEASE/{c=$3}
-                      END{print a"."b"."c}' src/lib/lizard_compress.h)
+                      END{print a"."b"."c}' src/lib/lizard_compress.h | tr -d '\r')
           d=lizard-ex-$ver-windows-${{ matrix.arch }}
           mkdir "$d"
-          cp src/programs/lizard.exe src/README.md src/NEWS "$d"/
+          cp "dist/${{ matrix.arch }}/lizard.exe" src/README.md src/NEWS "$d"/
           cp src/lib/LICENSE "$d/LICENSE-lib.txt"
           cp src/programs/COPYING "$d/COPYING-programs.txt"
-          zip -qr "$d.zip" "$d"
+          7z a -tzip "$d.zip" "$d" > /dev/null
 
       - uses: actions/upload-artifact@v4
         with:
