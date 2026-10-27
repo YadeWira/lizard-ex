@@ -49,7 +49,7 @@ EXT =
 endif
 
 
-.PHONY: default all lib lizard windows clean test test-fast test-binary test-interop test-valgrind test-poisoned-heap versionsTest examples
+.PHONY: default all lib lizard windows clean test test-fast test-binary test-interop test-fuzz test-valgrind test-poisoned-heap versionsTest examples
 
 default: lizard
 
@@ -111,6 +111,9 @@ windows: clean
 	@echo "built: $(PRGDIR)/lizard.exe and $(TESTDIR)/datagen.exe"
 
 test-interop:
+	$(MAKE) -C $(TESTDIR) $@
+
+test-fuzz:
 	$(MAKE) -C $(TESTDIR) $@
 
 test-valgrind:

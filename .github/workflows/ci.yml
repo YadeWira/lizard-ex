@@ -204,6 +204,21 @@ jobs:
         run: sh tests/test_interop.sh build-matrix/*
 
   # ---------------------------------------------------------------------------
+  # Decoder fuzzing: arbitrary and corrupted streams must fail cleanly.  The
+  # harness is built with ASan and UBSan, so a read past a buffer or an
+  # undefined operation is a finding.
+  # ---------------------------------------------------------------------------
+  fuzz:
+    name: decoder fuzzing (libFuzzer, ASan+UBSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fuzz
+        run: sh tests/test-fuzz.sh 120
+
+  # ---------------------------------------------------------------------------
   # valgrind: memory errors on the paths the tests exercise.
   # ---------------------------------------------------------------------------
   valgrind:

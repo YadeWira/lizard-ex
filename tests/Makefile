@@ -112,6 +112,16 @@ frametest32: $(LIBDIR)/lizard_frame.c $(LIBDIR)/lizard_compress.c $(LIBDIR)/liza
 datagen : $(PRGDIR)/datagen.c datagencli.c
 	$(CC) $(FLAGS) -I$(PRGDIR) $^ -o $@$(EXT)
 
+# libFuzzer harness for the decoders.  Needs clang; not part of "native".
+#   make fuzz_decode && ../tests/fuzz_decode -max_total_time=60 corpus/
+FUZZ_FLAGS := -O1 -g -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer
+
+fuzz_decode: fuzz_decode.c
+	$(CC) $(FUZZ_FLAGS) $(CPPFLAGS) fuzz_decode.c \
+	    $(LIBDIR)/lizard_compress.c $(LIBDIR)/lizard_decompress.c \
+	    $(LIBDIR)/lizard_frame.c $(LIBDIR)/xxhash/xxhash.c \
+	    $(ENTROPY_FILES) -o $@$(EXT)
+
 clean:
 	@$(MAKE) -C $(LIBDIR) $@ > $(VOID)
 	@$(RM) core *.o *.test tmp* \
@@ -119,6 +129,7 @@ clean:
         fullbench$(EXT) fullbench32$(EXT) \
         fuzzer$(EXT) fuzzer32$(EXT) \
         frametest$(EXT) frametest32$(EXT) \
+        fuzz_decode$(EXT) \
         datagen$(EXT)
 	@rm -fR $(TESTDIR)
 	@echo Cleaning completed
@@ -268,6 +279,9 @@ test-interop:
 
 test-binary: lizard datagen
 	./test_binary.sh $(PRGDIR)/lizard ./datagen
+
+test-fuzz:
+	./test-fuzz.sh
 
 test-valgrind:
 	./test-valgrind.sh

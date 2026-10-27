@@ -23,6 +23,18 @@ Bounded suites (what CI runs on every push)
   zeroed heap and with `MALLOC_PERTURB_` set, and requires identical output.  A
   compressor that reads uninitialised memory fails here.
 
+Fuzzing
+-------------------------------------------------------
+
+- `fuzz_decode.c` : libFuzzer harness for the decoders.  It feeds arbitrary
+  bytes to `LizardF_decompress` (in one call, one byte at a time, and in
+  chunks that follow the decoder's own hint) and to `Lizard_decompress_safe`,
+  and requires a clean failure: an error, not a crash, a hang or a read past
+  the input.  Built with ASan and UBSan.
+- `test-fuzz.sh [seconds]` : builds the harness, seeds a corpus with valid
+  streams of every compression method and runs it for 60 seconds by default.
+  CI runs it for two minutes on every push.
+
 Cross-build compatibility
 -------------------------------------------------------
 

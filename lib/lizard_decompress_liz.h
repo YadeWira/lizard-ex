@@ -84,19 +84,19 @@ FORCE_INLINE int Lizard_decompress_LIZv1(
 
             /* copy literals */
             cpy = op + length;
-            if (unlikely(cpy > oend - WILDCOPYLENGTH || ctx->literalsPtr > iend - WILDCOPYLENGTH)) { LIZARD_LOG_DECOMPRESS_LIZv1("offset outside buffers\n"); goto _output_error; }   /* Error : offset outside buffers */
-    #if 1
-            Lizard_wildCopy16(op, ctx->literalsPtr, cpy);
+            if (unlikely(cpy > oend || (size_t)(iend - ctx->literalsPtr) < (size_t)length)) { LIZARD_LOG_DECOMPRESS_LIZv1("offset outside buffers\n"); goto _output_error; }   /* Error : offset outside buffers */
+            /* The wild copy reads in 16 byte steps, so it needs 16 bytes of
+               slack on both sides; the literals of the last sequence end where
+               the block ends, so the tail is copied exactly instead.  Checking
+               only the start of the literals read up to 15 bytes past iend. */
+            if (likely((size_t)(oend - cpy) >= WILDCOPYLENGTH &&
+                       (size_t)(iend - ctx->literalsPtr) >= (size_t)length + WILDCOPYLENGTH)) {
+                Lizard_wildCopy16(op, ctx->literalsPtr, cpy);
+            } else {
+                memcpy(op, ctx->literalsPtr, (size_t)length);
+            }
             op = cpy;
             ctx->literalsPtr += length; 
-    #else
-            Lizard_copy8(op, ctx->literalsPtr);
-            Lizard_copy8(op+8, ctx->literalsPtr+8);
-            if (length > 16)
-                Lizard_wildCopy16(op + 16, ctx->literalsPtr + 16, cpy);
-            op = cpy;
-            ctx->literalsPtr += length; 
-    #endif
 
             /* get offset */
 #if 1

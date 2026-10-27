@@ -19,6 +19,9 @@ Build and CI:
   run (`test-poisoned-heap`).  The multi-gigabyte cases stay in `make test`.
 - Warnings: the tree builds with -Werror under gcc and clang, and with
   -Wconversion under clang, on the platforms above.
+- `make test-fuzz` builds a libFuzzer harness for the decoders with ASan and
+  UBSan and runs it for two minutes on every push, from a corpus of valid
+  streams of every compression method.
 - The Visual Studio projects build with the toolset of the installed Visual
   Studio (`$(DefaultPlatformToolset)`) instead of requiring the VS2010 one
   (v100), which no current machine has.  Building with VS2010 is unaffected.
@@ -30,6 +33,14 @@ Library:
   so a valid stream could not be decoded: `lizard -t` failed on a one byte file
   and on incompressible data, while the same stream decoded fine with gcc,
   clang and mingw.  The header is read once, into a local, now.
+
+- The LIZv1 decoder copied a literal run with Lizard_wildCopy16(), which reads
+  in 16 byte steps, after checking only that the *start* of the run was 16
+  bytes away from the end of the buffer.  A block whose last literal run ended
+  at the end of the input made the decoder read up to 15 bytes past it.  Found
+  by the new libFuzzer harness (tests/fuzz_decode.c) under ASan: the fast path
+  is taken only when there is slack on both sides now, and the tail is copied
+  exactly.
 
 Command line:
 - `-t` on a file that cannot be opened printed "No such file or directory" and
