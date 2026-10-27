@@ -78,6 +78,9 @@ jobs:
 
       - name: Build the program and the test data generator
         run: |
+          # The binary embeds __DATE__; SOURCE_DATE_EPOCH makes it, and the
+          # archive built from it, reproducible from the tag.
+          export SOURCE_DATE_EPOCH=$(git -C src log -1 --format=%ct)
           make -C src/programs lizard ${{ matrix.flags }}
           make -C src/tests datagen ${{ matrix.flags }}
           file src/programs/lizard
@@ -96,7 +99,10 @@ jobs:
           cp src/programs/lizard src/programs/lizard.1 src/README.md src/NEWS "$d"/
           cp src/lib/LICENSE "$d/LICENSE-lib"
           cp src/programs/COPYING "$d/COPYING-programs"
-          tar czf "$d.tar.gz" "$d"
+          # Reproducible archive: sorted entries, fixed owner and timestamp.
+          epoch=$(git -C src log -1 --format=%ct)
+          tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="@$epoch" \
+              -czf "$d.tar.gz" "$d"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -126,6 +132,7 @@ jobs:
 
       - name: Build both architectures
         run: |
+          export SOURCE_DATE_EPOCH=$(git -C src log -1 --format=%ct)
           make -C src windows
           mkdir -p dist/x64 dist/x86
           cp src/programs/lizard.exe src/tests/datagen.exe dist/x64/
@@ -178,6 +185,9 @@ jobs:
           cp "dist/${{ matrix.arch }}/lizard.exe" src/README.md src/NEWS "$d"/
           cp src/lib/LICENSE "$d/LICENSE-lib.txt"
           cp src/programs/COPYING "$d/COPYING-programs.txt"
+          # Reproducible archive: fixed timestamps in every entry.
+          epoch=$(git -C src log -1 --format=%ct)
+          touch -d "@$epoch" "$d"/*
           7z a -tzip "$d.zip" "$d" > /dev/null
 
       - uses: actions/upload-artifact@v4

@@ -91,7 +91,12 @@ find "$STAGE" -type f | LC_ALL=C sort | xargs sha256sum > "$TARBALL.sha256"
 
 # --- package ---------------------------------------------------------------
 echo "==> packaging $TARBALL"
-tar czf "$TARBALL" "$STAGE"
+# Reproducible archive: the same commit gives the same tarball.  Entries are
+# sorted and carry a fixed owner and timestamp, taken from SOURCE_DATE_EPOCH
+# or from the commit itself.
+EPOCH=${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct 2>/dev/null || date +%s)}
+tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="@$EPOCH" \
+    -czf "$TARBALL" "$STAGE"
 rm -rf "$STAGE"
 
 echo
