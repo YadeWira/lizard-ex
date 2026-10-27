@@ -31,6 +31,10 @@ Lizard that no longer compiles on your toolchain, this is the line to use.
 |-----------|--------|
 | CI (Linux x86/x64/arm64, Windows x86/x64, macOS arm64) | [![CI][ciBadge]][ciLink] |
 
+**Documentation is in the [wiki][wiki]**: [getting started][wGS], [compression
+levels][wCL], [library API][wAPI], [compatibility][wCompat], [building][wBuild]
+and [testing][wTest].
+
 Quick start
 --------------------------------------------------------
 
@@ -77,6 +81,13 @@ The high compression/decompression speed is achieved without any SSE and AVX ext
 
 
 [Lizard]: https://github.com/inikep/lizard
+[wiki]: https://github.com/YadeWira/lizard-ex/wiki
+[wGS]: https://github.com/YadeWira/lizard-ex/wiki/Getting-Started
+[wCL]: https://github.com/YadeWira/lizard-ex/wiki/Compression-Levels
+[wAPI]: https://github.com/YadeWira/lizard-ex/wiki/Library-API
+[wCompat]: https://github.com/YadeWira/lizard-ex/wiki/Compatibility
+[wBuild]: https://github.com/YadeWira/lizard-ex/wiki/Building
+[wTest]: https://github.com/YadeWira/lizard-ex/wiki/Testing
 [ciBadge]: https://github.com/YadeWira/lizard-ex/actions/workflows/ci.yml/badge.svg "Continuous Integration"
 [ciLink]: https://github.com/YadeWira/lizard-ex/actions/workflows/ci.yml
 
