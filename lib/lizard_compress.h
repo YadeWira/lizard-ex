@@ -70,7 +70,7 @@ extern "C" {
 **************************************/
 #define LIZARD_VERSION_MAJOR    2    /* for breaking interface changes  */
 #define LIZARD_VERSION_MINOR    2    /* for new (non-breaking) interface capabilities */
-#define LIZARD_VERSION_RELEASE  0    /* for tweaks, bug-fixes, or development */
+#define LIZARD_VERSION_RELEASE  1    /* for tweaks, bug-fixes, or development */
 
 #define LIZARD_VERSION_NUMBER (LIZARD_VERSION_MAJOR *100*100 + LIZARD_VERSION_MINOR *100 + LIZARD_VERSION_RELEASE)
 int Lizard_versionNumber (void);
