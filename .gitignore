@@ -18,9 +18,7 @@
 *.app
 lizard
 
-# IDE / editors files
-*.suo
-*.user
+# editors
 .clang_complete
 
 # Cross-build output of tests/build-matrix.sh
@@ -28,7 +26,6 @@ build-matrix/
 
 # Directories
 _lizardbench/
-_visual/
 _codelite/
 _backup/
 _codelite_lz4/

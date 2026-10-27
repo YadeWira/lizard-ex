@@ -51,9 +51,8 @@ Windows does not need Visual Studio: `make windows` cross-compiles a statically
 linked `lizard.exe` with mingw-w64 from any POSIX host, and
 `make windows WINCC=i686-w64-mingw32-gcc` does the 32-bit one.  Those are the
 toolchains the Windows release binaries come from, and CI runs the resulting
-binaries on a real Windows runner before they are attached to a release.  The
-MSVC projects in `visual/` are kept for people who build inside Visual Studio,
-but nothing in this line depends on them.
+binaries on a real Windows runner before they are attached to a release.
+Visual Studio is not supported: the projects were removed in 2.3.0.
 
 ```c
 #include "lizard_compress.h"
@@ -225,7 +224,6 @@ lizard undergoes automated testing using Azure Pipelines with the following comp
 - MacOS: Apple LLVM version 15.0.0
 - Windows: mingw32-gcc 14.2.0 (32-bit) and mingw64-gcc 14.2.0 (64-bit)
 - Cross-compilation: gcc for ARM (32-bit and 64-bit) and PowerPC (32-bit and 64-bit)
-- Visual Studio 2019 / 2022 (32-bit and 64-bit)
 
 
 Documentation

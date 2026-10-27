@@ -1,3 +1,19 @@
+lizard-ex v2.3.0
+Maintenance release.  The compressed format, the API, the compression levels
+and the compressed output are unchanged.
+
+Build:
+- Visual Studio support is gone.  The projects in visual/ are removed, and with
+  them the only path that needed it: the Windows binaries are built with
+  mingw-w64 (`make windows`, and `make windows WINCC=i686-w64-mingw32-gcc` for
+  x86), which is what CI builds, what the tests run on a Windows runner, and
+  what the release ships.
+- .gitignore loses the Visual Studio entries.
+- The C sources keep their `_MSC_VER` branches: they are compiler portability,
+  not build files, and some of them live in the entropy code vendored from
+  zstd.  Nothing in this project builds with MSVC, and nothing is tested with
+  it; if you need MSVC, use a release before 2.3.0.
+
 lizard-ex v2.2.2
 Performance release.  The compressed format, the API and the compression
 levels are unchanged, and the output is unchanged too: the same input at the
