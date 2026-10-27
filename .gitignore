@@ -46,3 +46,7 @@ _codelite_lz4/
 # Release artefacts (make-release.sh)
 lizard-ex-*.tar.gz
 lizard-ex-*.tar.gz.sha256
+
+# Fuzzer build output and working corpus
+/tests/corpus/
+/tests/fuzz_decode

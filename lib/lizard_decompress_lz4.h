@@ -142,8 +142,12 @@ FORCE_INLINE int Lizard_decompress_LZ4(
         if (unlikely(cpy > oend - WILDCOPYLENGTH)) { LIZARD_LOG_DECOMPRESS_LZ4("1match=%p lowLimit=%p\n", match, lowLimit); goto _output_error; }   /* Error : offset outside buffers */
         Lizard_copy8(op, match);
         Lizard_copy8(op+8, match+8);
-        if (length > 16)
-            Lizard_wildCopy16(op + 16, match + 16, cpy);
+        if (length > 16) {
+            if (likely(cpy <= oend - 32))
+                Lizard_wildCopy32(op + 16, match + 16, cpy);
+            else
+                Lizard_wildCopy16(op + 16, match + 16, cpy);
+        }
         op = cpy;
         if ((partialDecoding) && (op >= oexit)) return (int) (op-dest);
     }

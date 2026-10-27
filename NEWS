@@ -1,3 +1,23 @@
+lizard-ex v2.2.2
+Performance release.  The compressed format, the API and the compression
+levels are unchanged, and the output is unchanged too: the same input at the
+same level produces the same bytes as 2.2.1.
+
+Speed, taken from how LZ4 1.10 implements the same primitives:
+- `Lizard_count()` does the first comparison outside the loop, as LZ4 does.
+  Most matches end after the first 8 bytes, and this saves the loop setup for
+  every candidate compared.
+- The LZ4-codeword encoder copies literal runs 16 bytes at a time once they
+  reach WILDCOPYLENGTH.
+- The decoder copies long matches 32 bytes at a time when the output buffer
+  leaves room for it, and keeps the 16 byte path when it does not.
+
+Measured on silesia.tar (212 MB, best of six interleaved runs): level -10 goes
+from 416 to 451 MB/s (+8%) and -11 from 229 to 244 MB/s (+7%); the other
+levels are unchanged within noise, and decoding is unchanged or slightly
+faster.  The output of all 40 levels is byte-identical to 2.2.1, so every
+stream stays readable by earlier releases.
+
 lizard-ex v2.2.1
 Patch release.  The compressed format, the API and the compression levels are
 unchanged.

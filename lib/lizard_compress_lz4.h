@@ -26,7 +26,10 @@ FORCE_INLINE int Lizard_encodeSequence_LZ4 (
 
     /* Copy Literals */
     if (length > 0) {
-        Lizard_wildCopy(ctx->literalsPtr, *anchor, (ctx->literalsPtr) + length);
+        if (length >= WILDCOPYLENGTH)
+            Lizard_wildCopy16(ctx->literalsPtr, *anchor, (ctx->literalsPtr) + length);
+        else
+            Lizard_wildCopy(ctx->literalsPtr, *anchor, (ctx->literalsPtr) + length);
 #if 0 //def LIZARD_USE_HUFFMAN
         ctx->litSum += (U32)length;
         ctx->litPriceSum += (U32)(length * ctx->log2LitSum);

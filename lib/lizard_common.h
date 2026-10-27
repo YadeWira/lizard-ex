@@ -371,6 +371,15 @@ MEM_STATIC void Lizard_wildCopy(void* dstPtr, const void* srcPtr, void* dstEnd)
     do { Lizard_copy8(d,s); d+=8; s+=8; } while (d<e);
 }
 
+/* customized variant of memcpy, which can overwrite up to 31 bytes beyond dstEnd */
+MEM_STATIC void Lizard_wildCopy32(BYTE* dstPtr, const BYTE* srcPtr, BYTE* dstEnd)
+{
+    do { Lizard_copy8(dstPtr, srcPtr);       Lizard_copy8(dstPtr+8, srcPtr+8);
+         Lizard_copy8(dstPtr+16, srcPtr+16); Lizard_copy8(dstPtr+24, srcPtr+24);
+         dstPtr += 32; srcPtr += 32;
+    } while (dstPtr < dstEnd);
+}
+
 MEM_STATIC void Lizard_wildCopy16(BYTE* dstPtr, const BYTE* srcPtr, BYTE* dstEnd)
 {
     do {
@@ -487,6 +496,14 @@ MEM_STATIC unsigned Lizard_NbCommonBytes (size_t val)
 MEM_STATIC unsigned Lizard_count(const BYTE* pIn, const BYTE* pMatch, const BYTE* pInLimit)
 {
     const BYTE* const pStart = pIn;
+
+    /* First step outside the loop (as in LZ4): most matches end here, so this
+       saves the loop setup and a branch for every candidate compared. */
+    if (likely(pIn<pInLimit-(STEPSIZE-1))) {
+        size_t const diff = MEM_readST(pMatch) ^ MEM_readST(pIn);
+        if (!diff) { pIn+=STEPSIZE; pMatch+=STEPSIZE; }
+        else return (unsigned)Lizard_NbCommonBytes(diff);
+    }
 
     while (likely(pIn<pInLimit-(STEPSIZE-1))) {
         size_t diff = MEM_readST(pMatch) ^ MEM_readST(pIn);
