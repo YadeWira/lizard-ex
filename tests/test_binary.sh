@@ -35,7 +35,30 @@ LOG=$WORK/log
 fail=0
 checks=0
 
-run()  { "$@" >"$LOG" 2>&1; }
+# The binary may need a runner: a *.exe is a Windows program, and an aarch64
+# ELF runs under qemu on an x86 host.
+runner_for() {
+    case $1 in
+        *.exe|*.EXE) echo wine ;;
+        *)
+            if command -v file >/dev/null 2>&1 && file -b "$1" 2>/dev/null | grep -qi 'ARM aarch64'; then
+                echo "qemu-aarch64 -L /usr/aarch64-linux-gnu"
+            fi
+            ;;
+    esac
+}
+
+run_bin() { # binary args... (no redirection of its output)
+    _bin=$1; shift
+    _runner=$(runner_for "$_bin")
+    if [ -n "$_runner" ]; then
+        $_runner "$_bin" "$@"
+    else
+        "$_bin" "$@"
+    fi
+}
+
+run()  { run_bin "$@" >"$LOG" 2>&1; }
 ok()   { checks=$((checks + 1)); }
 bad()  {
     checks=$((checks + 1)); fail=$((fail + 1))
@@ -145,18 +168,18 @@ done
 
 # --- stdin / stdout --------------------------------------------------------
 rm -f "$WORK/p.liz" "$WORK/p.out"
-if "$BIN" -19 < "$WORK/text" > "$WORK/p.liz" 2>/dev/null; then ok; else bad "stdin to stdout"; fi
+if run_bin "$BIN" -19 < "$WORK/text" > "$WORK/p.liz" 2>/dev/null; then ok; else bad "stdin to stdout"; fi
 run "$BIN" -t "$WORK/p.liz"; [ $? -eq 0 ] && ok || bad "integrity test of the stdin stream"
-if "$BIN" -d -c "$WORK/p.liz" > "$WORK/p.out" 2>/dev/null; then ok; else bad "-d -c"; fi
+if run_bin "$BIN" -d -c "$WORK/p.liz" > "$WORK/p.out" 2>/dev/null; then ok; else bad "-d -c"; fi
 if same "$WORK/text" "$WORK/p.out"; then ok; else bad "stdin/stdout round-trip"; fi
 
 # --- multiple files --------------------------------------------------------
 mkdir -p "$WORK/multi"
 cp "$WORK/text" "$WORK/multi/text"
 cp "$WORK/random" "$WORK/multi/random"
-( cd "$WORK/multi" && "$BIN" -19 -f -m text random > /dev/null 2>&1 ); rc=$?
+( cd "$WORK/multi" && run_bin "$BIN" -19 -f -m text random > /dev/null 2>&1 ); rc=$?
 [ "$rc" -eq 0 ] && ok || bad "-m compression"
-( cd "$WORK/multi" && "$BIN" -d -f -m text.liz random.liz > "$LOG" 2>&1 ); rc=$?
+( cd "$WORK/multi" && run_bin "$BIN" -d -f -m text.liz random.liz > "$LOG" 2>&1 ); rc=$?
 if [ "$rc" -eq 0 ]; then ok; else bad "-m decompression"; dump "$WORK/multi/random.liz"; fi
 if same "$WORK/multi/text" "$WORK/text" && same "$WORK/multi/random" "$WORK/random"; then
     ok
