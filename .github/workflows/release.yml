@@ -74,7 +74,7 @@ jobs:
 
       - name: Install packages
         if: matrix.packages
-        run: sudo apt-get update && sudo apt-get install -y ${{ matrix.packages }}
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ${{ matrix.packages }}
 
       - name: Build the program and the test data generator
         run: |
@@ -132,7 +132,11 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine zip
+          # --no-install-recommends keeps this to the compilers and wine itself:
+          # the recommended packages (fonts, mono, gecko) are hundreds of
+          # megabytes and nothing here needs them.
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+              gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine64 wine32 zip
 
       - name: Build the program and the test data generator
         run: make -C src windows WINCC=${{ matrix.wincc }}
