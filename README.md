@@ -1,39 +1,16 @@
 lizard-ex - the maintained line of Lizard
 --------------------------------------------------------
 
-**lizard-ex** is the maintenance line of [Lizard], the compressor with very fast
-decompression.  The code base is Lizard 2.1, with its API and its block and
-frame formats **unchanged**: anything that reads or writes Lizard 2.1 streams
-keeps working, and a stream written here decodes with Lizard 2.1 and the other
-way round.
-
-What this line adds is the part a library needs to stay usable:
-
-- **A build and test matrix that is actually run.**  Linux x86, x86_64 and
-  arm64, Windows x86 and x86_64, macOS arm64.  Every push builds all of them,
-  runs the bounded test suite (fuzzer, frame tester, fullbench, the command
-  line cases) and runs ASan, UBSan and valgrind.
-- **A portability guarantee that is checked, not assumed.**  Every stream
-  produced by any of those builds must decode with all the others, and builds
-  that share a pointer width must produce identical bytes.  `make test-interop`
-  does exactly that with the binaries of all five targets.
-- **Compression that does not depend on the state of the heap.**
-  `make test-poisoned-heap` proves the output is a function of the input only.
-- **Fixes for the defects the matrix finds.**  See [`NEWS`](NEWS).
-
-Lizard the algorithm is not changed here: the compressed format, the levels and
-the tuning stay exactly as they were.  If you are looking for a new compressor,
-read the note from the original author below; zstd covers what Lizard used to
-cover in 2017.  If you have data compressed with Lizard, or a build of an old
-Lizard that no longer compiles on your toolchain, this is the line to use.
+**lizard-ex** is the maintenance line of [Lizard], the compressor with very
+fast decompression.  The code base is Lizard 2.1, with its API, its block and
+frame formats and its compression levels **unchanged**: a stream written here
+decodes with Lizard 2.1, and 2.2.2 and later produce the same bytes as the
+release before them.
 
 | Component | Status |
 |-----------|--------|
-| CI (Linux x86/x64/arm64, Windows x86/x64, macOS arm64) | [![CI][ciBadge]][ciLink] |
-
-**Documentation is in the [wiki][wiki]**: [getting started][wGS], [compression
-levels][wCL], [library API][wAPI], [compatibility][wCompat], [building][wBuild]
-and [testing][wTest].
+| CI | [![CI][ciBadge]][ciLink] |
+| Latest release | [![Release][relBadge]][relLink] |
 
 Quick start
 --------------------------------------------------------
@@ -41,18 +18,13 @@ Quick start
 ```sh
 make                       # lib/liblizard.{a,so} and programs/lizard
 make test-fast             # bounded regression suite, a few minutes
+make test-binary           # 234 command line checks on the built program
+make test-fuzz             # decoder fuzzing (libFuzzer + ASan/UBSan), one minute
 make test-interop          # cross-build stream compatibility (needs cross toolchains)
-make windows               # Windows x64 lizard.exe with mingw-w64 (see below)
+make windows               # Windows x64 lizard.exe with mingw-w64
 programs/lizard -29 file   # compress to file.liz
 programs/lizard -d file.liz
 ```
-
-Windows does not need Visual Studio: `make windows` cross-compiles a statically
-linked `lizard.exe` with mingw-w64 from any POSIX host, and
-`make windows WINCC=i686-w64-mingw32-gcc` does the 32-bit one.  Those are the
-toolchains the Windows release binaries come from, and CI runs the resulting
-binaries on a real Windows runner before they are attached to a release.
-Visual Studio is not supported: the projects were removed in 2.3.0.
 
 ```c
 #include "lizard_compress.h"
@@ -60,8 +32,60 @@ Visual Studio is not supported: the projects were removed in 2.3.0.
 
 int bound = Lizard_compressBound(srcSize);
 int csize = Lizard_compress(src, dst, srcSize, bound, 29);
-int dsize = Lizard_decompress_safe(dst, out, csize, outCapacity);
+int dsize = Lizard_decompress_safe(dst, out, csize, outCapacity);   /* < 0 if damaged */
 ```
+
+What this line adds
+--------------------------------------------------------
+
+The format and the tuning are not touched; what is added is the part a library
+needs to stay usable:
+
+- **A matrix that is actually run on every push.**  Linux x86_64 (gcc, clang,
+  `-Werror`, `-Wconversion`, ASan, UBSan), Linux i386, Linux arm64 on a native
+  runner, Windows x86 and x86_64 built with mingw-w64 and executed on a Windows
+  runner, macOS arm64.
+- **A portability guarantee that is checked, not assumed.**  `make test-interop`
+  requires every stream to decode with every build, and builds that share a
+  pointer width to produce identical bytes.
+- **Fuzzing.**  `make test-fuzz` feeds arbitrary and corrupted bytes to the
+  decoders under ASan and UBSan, whole, byte by byte and in chunks that follow
+  the decoder's own hint.  It found a read past the input in the LIZv1 literal
+  copy (fixed in 2.2.1) in its first minute.
+- **Fixes for what the matrix and the fuzzers find**: undefined behaviour in
+  the frame and block decoders, a stored block that MSVC x64 decoded as
+  compressed, `-t` reporting success on a file that does not exist.  The list
+  is in [`NEWS`](NEWS).
+- **Release binaries** for six targets, reproducible from the tag, with
+  `SHA256SUMS`, each one checked with `tests/test_binary.sh` before it is
+  attached.
+
+Windows, without Visual Studio
+--------------------------------------------------------
+
+`make windows` cross-compiles a **statically linked** `lizard.exe` with
+mingw-w64 from any POSIX host; `make windows WINCC=i686-w64-mingw32-gcc` does
+the 32-bit one.  That is the toolchain the release binaries come from, and CI
+runs them on a real Windows runner before they are attached.
+
+**Visual Studio is not supported**: the projects were removed in 2.3.0.  If you
+built inside Visual Studio, either use `make windows` or stay on 2.2.2.
+
+Compatibility
+--------------------------------------------------------
+
+The block format, the frame format, the API and the levels are Lizard 2.1's.  A
+stream written by this line decodes with Lizard 2.1, and the other way round;
+since 2.2.2 the compressed output is byte-identical release to release.
+
+The one thing this line deliberately does **not** do is emit offsets below 8.
+They are legal in the format, and 2.2.1 and later decoders handle them, but
+Lizard 2.1 copies them wrong, so enabling them would break the guarantee above.
+They cost about 2 % of ratio at the fast levels; see [compatibility][wCompat].
+
+**Documentation is in the [wiki][wiki]**: [getting started][wGS], [compression
+levels][wCL], [library API][wAPI], [compatibility][wCompat], [building][wBuild]
+and [testing][wTest].
 
 Lizard - efficient compression with very fast decompression
 --------------------------------------------------------
@@ -89,6 +113,8 @@ The high compression/decompression speed is achieved without any SSE and AVX ext
 [wTest]: https://github.com/YadeWira/lizard-ex/wiki/Testing
 [ciBadge]: https://github.com/YadeWira/lizard-ex/actions/workflows/ci.yml/badge.svg "Continuous Integration"
 [ciLink]: https://github.com/YadeWira/lizard-ex/actions/workflows/ci.yml
+[relBadge]: https://img.shields.io/github/v/release/YadeWira/lizard-ex "Latest release"
+[relLink]: https://github.com/YadeWira/lizard-ex/releases/latest
 
 [LZ4]: https://github.com/lz4/lz4
 [zlib]: https://github.com/madler/zlib
@@ -103,6 +129,10 @@ Back in 2017, Lizard 1.0 filled a niche between [LZ4] and [zstd] in terms of com
 
 Benchmarks
 -------------------------
+
+These are the original author's numbers for Lizard 2.1.  This line does not
+change the format or the tuning; 2.2.2 made the fast levels about 8 % faster to
+compress without changing the output (see [`NEWS`](NEWS)).
 
 The following results were obtained using [lzbench 2.0](https://github.com/inikep/lzbench), built with `gcc 14.2.0` and executed with the options ` -t16,16 -o1c4 -elz4/lz4hc/lizard/zstd_fast/zstd/zlib/brotli`.
 The tests were run on a single core of an AMD EPYC 9554 processor at 3.10 GHz, with the CPU governor set to `performance` and turbo
@@ -216,14 +246,12 @@ boost disabled for stability. The operating system was `Ubuntu 24.04.1`, and the
 | brotli 1.1.0 -11        |  0.58 MB/s |   387 MB/s |    50407795 | 23.78 |
 
 
-Automatic CI/CD testing
+Building and testing
 -------------------------
 
-lizard undergoes automated testing using Azure Pipelines with the following compilers:
-- Ubuntu: gcc (versions 7.5 to 14.2) and clang (versions 6.0 to 19), gcc 14.2 (32-bit)
-- MacOS: Apple LLVM version 15.0.0
-- Windows: mingw32-gcc 14.2.0 (32-bit) and mingw64-gcc 14.2.0 (64-bit)
-- Cross-compilation: gcc for ARM (32-bit and 64-bit) and PowerPC (32-bit and 64-bit)
+The compilers, the flags and what each suite covers are in the wiki:
+[building][wBuild] and [testing][wTest].  In short: gcc and clang on Linux and
+macOS, mingw-w64 for Windows, and no Visual Studio anywhere.
 
 
 Documentation
