@@ -213,5 +213,7 @@ jobs:
         run: |
           # dist/ also holds the x64/ and x86/ folders of the windows-binaries
           # artifact; only the archives and the checksums are release assets.
+          # SHA256SUMS has to be named explicitly: it does not match the
+          # archive glob, and a stale one does not describe the archives.
           ls -l dist
-          gh release upload "$REF" dist/lizard-ex-* --clobber -R "$GITHUB_REPOSITORY"
+          gh release upload "$REF" dist/lizard-ex-* dist/SHA256SUMS --clobber -R "$GITHUB_REPOSITORY"
