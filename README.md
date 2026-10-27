@@ -130,9 +130,45 @@ Back in 2017, Lizard 1.0 filled a niche between [LZ4] and [zstd] in terms of com
 Benchmarks
 -------------------------
 
-These are the original author's numbers for Lizard 2.1.  This line does not
-change the format or the tuning; 2.2.2 made the fast levels about 8 % faster to
-compress without changing the output (see [`NEWS`](NEWS)).
+Measured for this line on a **single core of an Intel Xeon E5-2697A v4 at
+2.60 GHz**, Ubuntu 24.04, gcc 14.2, on `silesia.tar` (211,957,760 bytes).  Each
+tool ran its own in-memory benchmark (`-b<level> -i2`), best of three runs.
+`lizard-ex` is 2.3.0, LZ4 is 1.10.0 and zstd is 1.5.7.
+
+These numbers are not comparable with the table further down: different
+machine, different tools.  They are here so the trade-offs of this library can
+be read against the two compressors it is measured against, on the same box.
+
+| Compressor | Level | Size | Ratio | Compression | Decompression |
+|---|---|---|---|---|---|
+| **lizard-ex 2.3.0** | `-10` | 103.4 MB | 2.050 | 445 MB/s | 2560 MB/s |
+| **lizard-ex 2.3.0** | `-12` | 86.2 MB | 2.458 | 117 MB/s | 2458 MB/s |
+| **lizard-ex 2.3.0** | `-16` | 79.4 MB | 2.671 | 42.8 MB/s | 2458 MB/s |
+| **lizard-ex 2.3.0** | `-19` | 77.4 MB | 2.738 | 4.1 MB/s | 2413 MB/s |
+| **lizard-ex 2.3.0** | `-20` | 96.9 MB | 2.187 | 326 MB/s | 1758 MB/s |
+| **lizard-ex 2.3.0** | `-26` | 72.5 MB | 2.925 | 6.4 MB/s | 1529 MB/s |
+| **lizard-ex 2.3.0** | `-30` | 85.8 MB | 2.471 | 329 MB/s | 1137 MB/s |
+| **lizard-ex 2.3.0** | `-40` | 80.8 MB | 2.622 | 240 MB/s | 1049 MB/s |
+| **lizard-ex 2.3.0** | `-49` | 60.7 MB | 3.490 | 1.9 MB/s | 1084 MB/s |
+| lz4 1.10.0 | `-1` | 100.9 MB | 2.101 | 530 MB/s | 3314 MB/s |
+| lz4 1.10.0 | `-3` | 81.3 MB | 2.606 | 77.0 MB/s | 3172 MB/s |
+| lz4 1.10.0 | `-9` | 77.9 MB | 2.721 | 28.9 MB/s | 3182 MB/s |
+| lz4 1.10.0 | `-12` | 77.3 MB | 2.743 | 9.7 MB/s | 2931 MB/s |
+| zstd 1.5.7 | `-1` | 73.3 MB | 2.892 | 1057 MB/s | 947 MB/s |
+| zstd 1.5.7 | `-3` | 66.3 MB | 3.198 | 530 MB/s | 702 MB/s |
+| zstd 1.5.7 | `-9` | 59.2 MB | 3.581 | 176 MB/s | 528 MB/s |
+| zstd 1.5.7 | `-19` | 52.9 MB | 4.010 | 7.9 MB/s | 529 MB/s |
+
+Read it as what it is: LZ4 is faster on both sides at a slightly better ratio,
+zstd reaches a much better ratio while decoding at half to a quarter of the
+speed, and Lizard sits in between — its decoder is the cheap one, which is what
+it was built for.  2.2.2 made the fast levels about 8 % faster to compress than
+2.2.1 with identical output; see [`NEWS`](NEWS).
+
+### The original author's run (2025)
+
+These are the numbers in which Lizard was declared obsolete.  They are kept as
+they were written, and are the reference for the claims in the next section.
 
 The following results were obtained using [lzbench 2.0](https://github.com/inikep/lzbench), built with `gcc 14.2.0` and executed with the options ` -t16,16 -o1c4 -elz4/lz4hc/lizard/zstd_fast/zstd/zlib/brotli`.
 The tests were run on a single core of an AMD EPYC 9554 processor at 3.10 GHz, with the CPU governor set to `performance` and turbo
