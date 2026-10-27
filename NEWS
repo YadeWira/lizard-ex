@@ -1,3 +1,16 @@
+lizard-ex v2.3.1
+Patch release.  The compressed format, the API and the compressed output are
+unchanged.
+
+Library:
+- `Lizard_readStream()` read the length of an uncompressed stream and moved the
+  pointer to its end without checking that the end falls inside the input.  A
+  corrupt block could point the literals stream past the buffer, and the
+  decoder then read up to 15 bytes beyond it.  Both the wrap-around and the end
+  of the input are checked now, the way the Huffman branch already was.  Found
+  by the fuzzer in CI in a single two minute run; with the fix, 773660 inputs
+  do not reach it.
+
 lizard-ex v2.3.0
 Maintenance release.  The compressed format, the API, the compression levels
 and the compressed output are unchanged.

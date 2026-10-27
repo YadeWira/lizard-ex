@@ -75,7 +75,10 @@ FORCE_INLINE size_t Lizard_readStream(int flag, const BYTE** ip, const BYTE* con
         if (*ip > iend - 3) return 0;
         *streamPtr = *ip + 3;
         *streamEnd = *streamPtr + MEM_readLE24(*ip);
-        if (*streamEnd < *streamPtr) return 0;
+        /* The length comes from the stream: it can point past the input, and
+           the decoders would then read whatever is there.  Check both the
+           wrap-around and the end of the buffer. */
+        if (*streamEnd < *streamPtr || *streamEnd > iend) return 0;
         *ip = *streamEnd;
 #ifdef LIZARD_STATS
         uncompr_stream[streamFlag] += *streamEnd-*streamPtr;
