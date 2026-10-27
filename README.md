@@ -10,9 +10,9 @@ way round.
 What this line adds is the part a library needs to stay usable:
 
 - **A build and test matrix that is actually run.**  Linux x86, x86_64 and
-  arm64, Windows x86 and x86_64 (MSVC), macOS arm64.  Every push builds all of
-  them, runs the bounded test suite (fuzzer, frame tester, fullbench, the
-  command line cases) and runs ASan, UBSan and valgrind.
+  arm64, Windows x86 and x86_64, macOS arm64.  Every push builds all of them,
+  runs the bounded test suite (fuzzer, frame tester, fullbench, the command
+  line cases) and runs ASan, UBSan and valgrind.
 - **A portability guarantee that is checked, not assumed.**  Every stream
   produced by any of those builds must decode with all the others, and builds
   that share a pointer width must produce identical bytes.  `make test-interop`
@@ -38,9 +38,17 @@ Quick start
 make                       # lib/liblizard.{a,so} and programs/lizard
 make test-fast             # bounded regression suite, a few minutes
 make test-interop          # cross-build stream compatibility (needs cross toolchains)
+make windows               # Windows x64 lizard.exe with mingw-w64 (see below)
 programs/lizard -29 file   # compress to file.liz
 programs/lizard -d file.liz
 ```
+
+Windows does not need Visual Studio: `make windows` cross-compiles a statically
+linked `lizard.exe` with mingw-w64 from any POSIX host, and
+`make windows WINCC=i686-w64-mingw32-gcc` does the 32-bit one.  Those are the
+toolchains the Windows release binaries come from.  The MSVC projects in
+`visual/` are kept for people who build inside Visual Studio, but nothing in
+this line depends on them.
 
 ```c
 #include "lizard_compress.h"

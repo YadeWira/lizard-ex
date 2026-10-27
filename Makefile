@@ -49,7 +49,7 @@ EXT =
 endif
 
 
-.PHONY: default all lib lizard clean test test-fast test-binary test-interop test-valgrind test-poisoned-heap versionsTest examples
+.PHONY: default all lib lizard windows clean test test-fast test-binary test-interop test-valgrind test-poisoned-heap versionsTest examples
 
 default: lizard
 
@@ -98,6 +98,17 @@ test-fast:
 # Command line conformance of the built program (also used for release binaries).
 test-binary:
 	$(MAKE) -C $(TESTDIR) $@
+
+# Windows build with mingw-w64, cross-compiled from any POSIX host.  This is
+# how the Windows binaries are made: Visual Studio is not needed, and the
+# result is statically linked, so it runs on a plain Windows install.
+#   make windows                             x86_64
+#   make windows WINCC=i686-w64-mingw32-gcc   x86
+WINCC ?= x86_64-w64-mingw32-gcc
+windows: clean
+	$(MAKE) -C $(PRGDIR) lizard CC=$(WINCC) EXT=.exe LDFLAGS=-static
+	$(MAKE) -C $(TESTDIR) datagen CC=$(WINCC) EXT=.exe LDFLAGS=-static
+	@echo "built: $(PRGDIR)/lizard.exe and $(TESTDIR)/datagen.exe"
 
 test-interop:
 	$(MAKE) -C $(TESTDIR) $@

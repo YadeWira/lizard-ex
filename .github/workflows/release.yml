@@ -104,20 +104,21 @@ jobs:
           path: lizard-ex-*.tar.gz
 
   # ---------------------------------------------------------------------------
-  # Windows: the MSVC solution, x64 and x86.  The projects link the C runtime
-  # statically, so the exe needs no redistributable.
+  # Windows: mingw-w64 cross-compiled from Linux, statically linked, so the exe
+  # runs on a plain Windows install and no Visual Studio is involved anywhere in
+  # the release.
   # ---------------------------------------------------------------------------
   windows:
     name: windows-${{ matrix.arch }}
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - arch: x64
-            platform: x64
+            wincc: x86_64-w64-mingw32-gcc
           - arch: x86
-            platform: Win32
+            wincc: i686-w64-mingw32-gcc
     steps:
       - uses: actions/checkout@v4
         with:
@@ -126,34 +127,34 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: current
-      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install mingw-w64, wine and zip
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine zip
 
       - name: Build the program and the test data generator
-        shell: cmd
-        run: |
-          msbuild src\visual\VS2010\lizard\lizard.vcxproj /p:Configuration=Release /p:Platform=${{ matrix.platform }} /p:SolutionDir=%CD%\src\visual\VS2010\ /v:minimal
-          msbuild src\visual\VS2010\datagen\datagen.vcxproj /p:Configuration=Release /p:Platform=${{ matrix.platform }} /p:SolutionDir=%CD%\src\visual\VS2010\ /v:minimal
+        run: make -C src windows WINCC=${{ matrix.wincc }}
 
       - name: Check the binary
-        shell: bash
         run: |
-          bash current/tests/test_binary.sh \
-            src/visual/VS2010/bin/${{ matrix.platform }}_Release/lizard.exe \
-            src/visual/VS2010/bin/${{ matrix.platform }}_Release/datagen.exe
+          file src/programs/lizard.exe
+          WINEDEBUG=-all bash current/tests/test_binary.sh \
+            src/programs/lizard.exe src/tests/datagen.exe
 
       - name: Package
-        shell: bash
         run: |
           ver=$(awk '/define LIZARD_VERSION_MAJOR/{a=$3}
                       /define LIZARD_VERSION_MINOR/{b=$3}
                       /define LIZARD_VERSION_RELEASE/{c=$3}
-                      END{print a"."b"."c}' src/lib/lizard_compress.h | tr -d '\r')
+                      END{print a"."b"."c}' src/lib/lizard_compress.h)
           d=lizard-ex-$ver-windows-${{ matrix.arch }}
           mkdir "$d"
-          cp "src/visual/VS2010/bin/${{ matrix.platform }}_Release/lizard.exe" src/README.md src/NEWS "$d"/
+          cp src/programs/lizard.exe src/README.md src/NEWS "$d"/
           cp src/lib/LICENSE "$d/LICENSE-lib.txt"
           cp src/programs/COPYING "$d/COPYING-programs.txt"
-          7z a -tzip "$d.zip" "$d" > /dev/null
+          zip -qr "$d.zip" "$d"
 
       - uses: actions/upload-artifact@v4
         with:

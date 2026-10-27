@@ -115,35 +115,37 @@ jobs:
           CC: clang
 
   # ---------------------------------------------------------------------------
-  # Windows: the MSVC solution, for both x64 and Win32.
+  # Windows: built with mingw-w64 and run under wine.  This is the toolchain
+  # that produces the Windows release binaries, so it is what CI has to check;
+  # no Visual Studio is involved.
   # ---------------------------------------------------------------------------
   windows:
-    name: windows msvc
-    runs-on: windows-latest
+    name: windows mingw (${{ matrix.arch }})
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        platform: [x64, Win32]
+        include:
+          - arch: x64
+            wincc: x86_64-w64-mingw32-gcc
+          - arch: x86
+            wincc: i686-w64-mingw32-gcc
     steps:
       - uses: actions/checkout@v4
-      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install mingw-w64 and wine
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine
 
       - name: Build
-        shell: cmd
-        run: msbuild visual\VS2010\lizard.sln /p:Configuration=Release /p:Platform=${{ matrix.platform }} /v:minimal
+        run: make windows WINCC=${{ matrix.wincc }}
 
-      - name: Round-trip and levels
-        shell: cmd
+      - name: Check the binary
         run: |
-          cd visual\VS2010\bin\${{ matrix.platform }}_Release
-          datagen.exe -g4M | lizard.exe -10 | lizard.exe -t
-          datagen.exe -g4M | lizard.exe -19 | lizard.exe -t
-          datagen.exe -g4M -P50 | lizard.exe -20 | lizard.exe -t
-          datagen.exe -g4M -P50 | lizard.exe -29 | lizard.exe -t
-          datagen.exe -g4M -P50 | lizard.exe -30 | lizard.exe -t
-          datagen.exe -g4M -P50 | lizard.exe -39 | lizard.exe -t
-          datagen.exe -g4M -P50 | lizard.exe -40 | lizard.exe -t
-          datagen.exe -g1M -P99 | lizard.exe -49 | lizard.exe -t
+          file programs/lizard.exe
+          WINEDEBUG=-all sh tests/test_binary.sh programs/lizard.exe tests/datagen.exe
 
   # ---------------------------------------------------------------------------
   # Interoperability: every stream must decode with every build, and builds

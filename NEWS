@@ -5,8 +5,14 @@ levels are unchanged.
 Build and CI:
 - GitHub Actions replaces the Azure Pipelines and AppVeyor configuration, which
   pointed at accounts that no longer build this tree.  Every push builds Linux
-  x86_64 (gcc and clang), Linux i386, Linux arm64, Windows x86 and x86_64 with
-  MSVC, and macOS arm64, and runs the bounded test suite on each of them.
+  x86_64 (gcc and clang), Linux i386, Linux arm64, Windows x86 and x86_64, and
+  macOS arm64, and runs the bounded test suite on each of them.
+- Windows builds no longer need Visual Studio.  `make windows` (and
+  `make windows WINCC=i686-w64-mingw32-gcc` for x86) cross-compiles a statically
+  linked lizard.exe with mingw-w64, and that is what CI builds, what the
+  interoperability test runs under wine, and what the release ships.  The MSVC
+  projects in visual/ are still in the tree and still build, but nothing
+  depends on them.
 - The bounded suite is `test-fast` (fuzzer, frame tester, fullbench, command
   line cases), plus ASan, UBSan, valgrind (`test-valgrind`) and a poisoned-heap
   run (`test-poisoned-heap`).  The multi-gigabyte cases stay in `make test`.
@@ -15,6 +21,14 @@ Build and CI:
 - The Visual Studio projects build with the toolset of the installed Visual
   Studio (`$(DefaultPlatformToolset)`) instead of requiring the VS2010 one
   (v100), which no current machine has.  Building with VS2010 is unaffected.
+
+Library:
+- `LizardF_decompress()` read the four block header bytes twice, once for the
+  block size and once for the "uncompressed block" flag.  MSVC x64 (Release)
+  merged those two loads and every stored block was taken for a compressed one,
+  so a valid stream could not be decoded: `lizard -t` failed on a one byte file
+  and on incompressible data, while the same stream decoded fine with gcc,
+  clang and mingw.  The header is read once, into a local, now.
 
 Command line:
 - `-t` on a file that cannot be opened printed "No such file or directory" and
