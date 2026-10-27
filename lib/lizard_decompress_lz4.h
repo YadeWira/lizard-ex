@@ -20,25 +20,26 @@ FORCE_INLINE int Lizard_decompress_LZ4(
 {
     /* Local Variables */
     int inputSize = (int)(ctx->flagsEnd - ctx->flagsPtr);
-
-    /* Special cases */
-    /* Before any pointer arithmetic: with an empty output buffer op is NULL
-       and op + 0 is undefined, and the same goes for lowPrefix - dictSize. */
-    if (unlikely(outputSize==0)) return ((inputSize==1) && (*ctx->flagsPtr==0)) ? 0 : -1;  /* Empty output buffer */
-
     const BYTE* const blockBase = ctx->flagsPtr;
     const BYTE* const iend = ctx->literalsEnd;
+
+    /* dest is NULL when there is nothing to write: the early return below
+       handles that, but the pointers are computed before it, and an offset
+       applied to a null pointer is undefined in C. */
     BYTE* op = dest;
-    BYTE* const oend = op + outputSize;
+    BYTE* const oend = op ? op + outputSize : NULL;
     BYTE* cpy = NULL;
-    BYTE* oexit = op + targetOutputSize;
-    const BYTE* const lowLimit = lowPrefix - dictSize;
+    BYTE* oexit = op ? op + targetOutputSize : NULL;
+    const BYTE* const lowLimit = lowPrefix ? lowPrefix - dictSize : NULL;
     const BYTE* const dictEnd = dictStart ? (const BYTE*)dictStart + dictSize : NULL;
 
     const int checkOffset = (dictSize < (int)(LIZARD_DICT_SIZE));
 
     intptr_t length = 0;
     (void)compressionLevel;
+
+    /* Special cases */
+    if (unlikely(outputSize==0)) return ((inputSize==1) && (*ctx->flagsPtr==0)) ? 0 : -1;  /* Empty output buffer */
 
     /* Main Loop : decode sequences */
     while (ctx->flagsPtr < ctx->flagsEnd) {
