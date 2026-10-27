@@ -129,13 +129,18 @@ jobs:
           path: current
 
       - name: Install mingw-w64, wine and zip
+        timeout-minutes: 15
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
           # --no-install-recommends keeps this to the compilers and wine itself:
           # the recommended packages (fonts, mono, gecko) are hundreds of
           # megabytes and nothing here needs them.
+          # The runner's unattended-upgrades can hold the dpkg lock; wait for it
+          # instead of failing (or hanging) and retry the downloads.
+          sudo systemctl stop unattended-upgrades 2>/dev/null || true
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+              -o DPkg::Lock::Timeout=600 -o Acquire::Retries=3 \
               gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine wine64 wine32 zip
 
       - name: Build the program and the test data generator

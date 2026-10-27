@@ -134,13 +134,18 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install mingw-w64 and wine
+        timeout-minutes: 15
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
           # --no-install-recommends keeps this to the compilers and wine itself:
           # the recommended packages (fonts, mono, gecko) are hundreds of
           # megabytes and nothing here needs them.
+          # The runner's unattended-upgrades can hold the dpkg lock; wait for it
+          # instead of failing (or hanging) and retry the downloads.
+          sudo systemctl stop unattended-upgrades 2>/dev/null || true
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+              -o DPkg::Lock::Timeout=600 -o Acquire::Retries=3 \
               gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 wine wine64 wine32
 
       - name: Build
@@ -163,6 +168,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install cross toolchains and runners
+        timeout-minutes: 20
         run: |
           # gcc-multilib and gcc-aarch64-linux-gnu cannot be installed in the
           # same Ubuntu image (their libc-dev packages collide), so the 32-bit
@@ -170,7 +176,11 @@ jobs:
           # automatically when gcc -m32 is not available.
           sudo dpkg --add-architecture i386
           sudo apt-get update
+          # The runner's unattended-upgrades can hold the dpkg lock; wait for it
+          # instead of failing (or hanging) and retry the downloads.
+          sudo systemctl stop unattended-upgrades 2>/dev/null || true
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+              -o DPkg::Lock::Timeout=600 -o Acquire::Retries=3 \
                                   gcc-i686-linux-gnu libc6-dev-i386-cross \
                                   gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
                                   qemu-user qemu-user-static \
