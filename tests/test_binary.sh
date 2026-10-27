@@ -84,9 +84,10 @@ same() { # file file
 
 # --- samples ---------------------------------------------------------------
 if [ -n "$DATAGEN" ]; then
-    "$DATAGEN" -s1 -g256KB > "$WORK/text" 2>/dev/null
-    "$DATAGEN" -s2 -g64KB -P0 > "$WORK/random" 2>/dev/null
-    "$DATAGEN" -s3 -g1M -P99 > "$WORK/repetitive" 2>/dev/null
+    # datagen may be a Windows program too, so it goes through the runner
+    run_bin "$DATAGEN" -s1 -g256KB > "$WORK/text" 2>/dev/null
+    run_bin "$DATAGEN" -s2 -g64KB -P0 > "$WORK/random" 2>/dev/null
+    run_bin "$DATAGEN" -s3 -g1M -P99 > "$WORK/repetitive" 2>/dev/null
 else
     printf 'the quick brown fox jumps over the lazy dog\n%.0s' $(seq 1 5000) > "$WORK/text"
     : > "$WORK/random"
@@ -96,7 +97,7 @@ fi
 printf 'x' > "$WORK/one-byte"
 
 echo "binary: $BIN"
-echo "version: $("$BIN" -V 2>&1 | head -1)"
+echo "version: $(run_bin "$BIN" -V 2>&1 | head -1)"
 
 # --- version and help ------------------------------------------------------
 run "$BIN" -V;        [ $? -eq 0 ] && ok || bad "-V failed"
