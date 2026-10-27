@@ -828,7 +828,12 @@ static int LizardIO_decompressDstFile(dRess_t ress, const char* input_filename, 
     if (foutput==NULL) return 1;   /* failure */
 
     ress.dstFile = foutput;
-    LizardIO_decompressSrcFile(ress, input_filename, output_filename);
+    if (LizardIO_decompressSrcFile(ress, input_filename, output_filename)) {
+        /* The input could not be opened: propagate it, otherwise "lizard -t"
+           reports success on a file that does not exist. */
+        fclose(foutput);
+        return 1;
+    }
 
     fclose(foutput);
 

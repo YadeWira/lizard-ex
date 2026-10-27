@@ -49,7 +49,7 @@ EXT =
 endif
 
 
-.PHONY: default all lib lizard clean test test-fast test-interop test-valgrind test-poisoned-heap versionsTest examples
+.PHONY: default all lib lizard clean test test-fast test-binary test-interop test-valgrind test-poisoned-heap versionsTest examples
 
 default: lizard
 
@@ -93,6 +93,10 @@ test:
 
 # Bounded suites.  See tests/test-fast.sh and tests/test_interop.sh.
 test-fast:
+	$(MAKE) -C $(TESTDIR) $@
+
+# Command line conformance of the built program (also used for release binaries).
+test-binary:
 	$(MAKE) -C $(TESTDIR) $@
 
 test-interop:

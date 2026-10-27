@@ -266,6 +266,9 @@ test-interop:
 	./build-matrix.sh ../build-matrix
 	./test_interop.sh ../build-matrix/*
 
+test-binary: lizard datagen
+	./test_binary.sh $(PRGDIR)/lizard ./datagen
+
 test-valgrind:
 	./test-valgrind.sh
 

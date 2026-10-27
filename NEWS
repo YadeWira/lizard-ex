@@ -1,4 +1,4 @@
-lizard-ex v2.2 (unreleased)
+lizard-ex v2.2.0
 Maintenance release.  The compressed format, the API and the compression
 levels are unchanged.
 
@@ -15,6 +15,14 @@ Build and CI:
 - The Visual Studio projects build with the toolset of the installed Visual
   Studio (`$(DefaultPlatformToolset)`) instead of requiring the VS2010 one
   (v100), which no current machine has.  Building with VS2010 is unaffected.
+
+Command line:
+- `-t` on a file that cannot be opened printed "No such file or directory" and
+  exited with 0, so a script that tests its archives saw a success on a missing
+  file.  `LizardIO_decompressSrcFile()` reported the failure but
+  `LizardIO_decompressDstFile()` dropped it; it is propagated now, and the same
+  for `-d` on one or several files.  Found by `tests/test_binary.sh`, which is
+  also new and is the gate for the release binaries.
 
 Undefined behaviour found by the new sanitizer runs and fixed:
 - `Lizard_highbit32(0)` called `__builtin_clz(0)`, which is undefined; the value
