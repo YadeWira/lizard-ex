@@ -4,7 +4,8 @@
 # Builds tests/fuzz_decode with ASan and UBSan, seeds the corpus with valid
 # streams from every compression method (so the fuzzer starts from something
 # that decodes instead of looking for the header from scratch) and runs it for
-# FUZZ_TIME seconds, 60 by default.
+# FUZZ_TIME seconds, 60 by default.  A corpus that already exists is kept and
+# extended.
 #
 # Usage:  tests/test-fuzz.sh [seconds]
 #
@@ -25,7 +26,8 @@ make datagen CC=${CC:-clang} > /dev/null
 make -C "$ROOT/programs" lizard CC=${CC:-clang} > /dev/null
 
 echo "== seed corpus =="
-rm -rf "$CORPUS"
+# An existing corpus is kept: nightly runs restore it from the cache so the
+# fuzzer spends its time on new paths, and this only adds the seeds.
 mkdir -p "$CORPUS"
 i=0
 for lvl in 10 13 16 19 20 23 26 29 30 33 36 39 40 43 46 49; do

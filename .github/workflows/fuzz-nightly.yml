@@ -1,0 +1,56 @@
+name: Nightly fuzz
+
+# The push CI fuzzes the decoders for two minutes.  That is enough to catch a
+# regression, not enough to find the rare one.  This runs it for fifteen
+# minutes every night, and keeps the corpus between runs so each night starts
+# where the last one ended.
+#
+# A finding is a crash, a sanitizer report or a timeout; the job fails and the
+# reproducer is uploaded.
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: decoder fuzzing (15 min)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      # Restoring the corpus is what makes the long run worth it: the fuzzer
+      # spends its time on new paths instead of rediscovering the old ones.
+      - name: Restore the fuzz corpus
+        uses: actions/cache/restore@v4
+        with:
+          path: tests/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+
+      - name: Fuzz
+        run: sh tests/test-fuzz.sh 900
+
+      - name: Save the fuzz corpus
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: tests/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+
+      - name: Keep the reproducer
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash
+          path: |
+            tests/crash-*
+            tests/timeout-*
+            tests/leak-*
+            tests/oom-*
+          if-no-files-found: ignore
