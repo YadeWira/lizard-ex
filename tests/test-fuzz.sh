@@ -29,6 +29,7 @@ echo "== seed corpus =="
 # An existing corpus is kept: nightly runs restore it from the cache so the
 # fuzzer spends its time on new paths, and this only adds the seeds.
 mkdir -p "$CORPUS"
+make mkblock CC=${CC:-clang} > /dev/null
 i=0
 for lvl in 10 13 16 19 20 23 26 29 30 33 36 39 40 43 46 49; do
     for size in 0 1 2 7 64 1000 70000; do
@@ -44,6 +45,21 @@ for f in "$CORPUS"/seed-2*; do
     printf '\377\377\377\377' | dd of="$f.bad" bs=1 seek=0 conv=notrunc > /dev/null 2>&1
 done
 rm -f seed.raw "$CORPUS"/*.bad
+
+# Block streams: the block decoder is a different code path from the frame
+# (a level byte instead of a magic number), and the frame seeds never reach it.
+# Mixed blocks matter: a stored block followed by a compressed one is where the
+# output budget went wrong in 2.3.1.
+i=0
+for lvl in 10 17 20 26 30 36 40 46 49; do
+    i=$((i + 1))
+    ./datagen -s"$i" -g140000 -P0 > mixed.raw 2>/dev/null || : > mixed.raw
+    ./datagen -s$((i + 100)) -g160000 -P99 >> mixed.raw 2>/dev/null || true
+    ./mkblock "$lvl" < mixed.raw > "$CORPUS/block-$lvl-mixed" 2>/dev/null || true
+    ./datagen -s"$i" -g70000 -P50 > seed.raw 2>/dev/null || : > seed.raw
+    ./mkblock "$lvl" < seed.raw > "$CORPUS/block-$lvl" 2>/dev/null || true
+done
+rm -f mixed.raw seed.raw
 echo "$(ls "$CORPUS" | wc -l | tr -d ' ') seeds"
 
 echo

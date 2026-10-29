@@ -43,6 +43,11 @@ echo "== fuzzer ($FUZZER_TIME) =="
 ./fuzzer --no-prompt -T"$FUZZER_TIME"
 
 echo
+echo "== mixed block types, exact output buffer =="
+make test_blocks
+./test_blocks
+
+echo
 echo "== command line (bounded cases) =="
 if [ "$QUICK" = 1 ]; then
     # test-lizard-basic pushes 256 MB through several levels; under the

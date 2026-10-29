@@ -174,6 +174,7 @@ FORCE_INLINE int Lizard_decompress_generic(
             if (ip + length > iend || op + length > oend) { LIZARD_LOG_DECOMPRESS("UNCOMPRESSED  ip[%p]+length[%d] > iend[%p]\n", ip, length, iend); goto _output_error; }
             memcpy(op, ip, length);
             op += length;
+            outputSize -= (int)length;   /* the next block decodes into the rest */
             ip += length;
             if ((partialDecoding) && (op >= oexit)) break;
 #ifdef LIZARD_STATS

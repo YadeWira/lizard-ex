@@ -112,6 +112,22 @@ frametest32: $(LIBDIR)/lizard_frame.c $(LIBDIR)/lizard_compress.c $(LIBDIR)/liza
 datagen : $(PRGDIR)/datagen.c datagencli.c
 	$(CC) $(FLAGS) -I$(PRGDIR) $^ -o $@$(EXT)
 
+# Compress stdin to stdout with the block API, to seed the fuzzer with block
+# streams (a level byte instead of a frame header).
+mkblock: mkblock.c
+	$(CC) $(FLAGS) mkblock.c \
+	    $(LIBDIR)/lizard_compress.c $(LIBDIR)/lizard_decompress.c \
+	    $(LIBDIR)/lizard_frame.c $(LIBDIR)/xxhash/xxhash.c \
+	    $(ENTROPY_FILES) -o $@$(EXT)
+
+# Mixed block types (stored then compressed): the output budget of the second
+# block must be the rest of the caller's buffer.  Found by zpaq-std.
+test_blocks: test_blocks.c
+	$(CC) $(FLAGS) test_blocks.c \
+	    $(LIBDIR)/lizard_compress.c $(LIBDIR)/lizard_decompress.c \
+	    $(LIBDIR)/lizard_frame.c $(LIBDIR)/xxhash/xxhash.c \
+	    $(ENTROPY_FILES) -o $@$(EXT)
+
 # libFuzzer harness for the decoders.  Needs clang; not part of "native".
 #   make fuzz_decode && ../tests/fuzz_decode -max_total_time=60 corpus/
 FUZZ_FLAGS := -O1 -g -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer
@@ -129,7 +145,7 @@ clean:
         fullbench$(EXT) fullbench32$(EXT) \
         fuzzer$(EXT) fuzzer32$(EXT) \
         frametest$(EXT) frametest32$(EXT) \
-        fuzz_decode$(EXT) \
+        fuzz_decode$(EXT) test_blocks$(EXT) mkblock$(EXT) \
         datagen$(EXT)
 	@rm -fR $(TESTDIR)
 	@echo Cleaning completed

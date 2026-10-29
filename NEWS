@@ -1,3 +1,24 @@
+lizard-ex v2.3.2
+Patch release.  The compressed format, the API and the compressed output are
+unchanged.
+
+Library:
+- The block decoder did not shrink the remaining output size after a stored
+  (uncompressed) block; it did after a compressed one.  A stream with a stored
+  block followed by a compressed block therefore handed the second block an
+  output end past the caller's buffer, and a damaged second block wrote past
+  it: `Lizard_decompress_safe()` could even return a positive size after
+  writing outside the buffer.  Formats built on the block API, where a whole
+  buffer is compressed in one call, are the exposed ones.  Found by zpaq-std
+  against 2.3.1 with a reproducer; the fix is the missing `outputSize -= length`.
+- `tests/test_blocks.c` builds that stream by hand (a stored block, then a
+  compressed one that does not fit) and requires the decode to fail.  It
+  overruns on 2.3.1 and passes here, at all 40 levels.
+- `tests/mkblock.c` and new fuzzer seeds: the block decoder is a different code
+  path from the frame decoder (a level byte instead of a magic number) and the
+  corpus barely reached it.  It now carries block streams at nine levels,
+  including stored-then-compressed ones.
+
 lizard-ex v2.3.1
 Patch release.  The compressed format, the API and the compressed output are
 unchanged.

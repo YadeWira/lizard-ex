@@ -47,3 +47,5 @@ lizard-ex-*.tar.gz.sha256
 # Fuzzer build output and working corpus
 /tests/corpus/
 /tests/fuzz_decode
+/tests/mkblock
+/tests/test_blocks
