@@ -32,11 +32,18 @@ if [ "$#" -ge 1 ] && [ "$1" != "$VERSION" ]; then
     exit 1
 fi
 
-# The README shows the latest release as text, and it has to be the version
-# being packaged: an out-of-date line is the first thing a visitor sees.
-if ! grep -q "Latest release | \[v$VERSION\]" README.md; then
-    echo "error: the README does not show v$VERSION as the latest release" >&2
-    echo "       update the 'Latest release' line before packaging." >&2
+# The badge and the README line show the latest release, and they have to be
+# the version being packaged: an out-of-date badge is the first thing a visitor
+# sees.  The badge lives in doc/badge-release.svg (not on an external service,
+# which some clients do not load) and the README points at it.
+if ! grep -q "v\(.*\)</text>" /dev/null 2>/dev/null; then :; fi
+if ! grep -q ">v$VERSION<" doc/badge-release.svg; then
+    echo "error: doc/badge-release.svg does not show v$VERSION" >&2
+    echo "       update the badge before packaging." >&2
+    exit 1
+fi
+if ! grep -q "relBadge.*badge-release.svg" README.md; then
+    echo "error: the README no longer points at doc/badge-release.svg" >&2
     exit 1
 fi
 

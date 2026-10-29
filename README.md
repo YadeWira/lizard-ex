@@ -10,7 +10,7 @@ release before them.
 | Component | Status |
 |-----------|--------|
 | CI | [![CI][ciBadge]][ciLink] |
-| Latest release | [v2.3.2][relLink] |
+| Latest release | [![release v2.3.2][relBadge]][relLink] |
 
 Quick start
 --------------------------------------------------------
@@ -115,6 +115,7 @@ The high compression/decompression speed is achieved without any SSE and AVX ext
 [ciBadge]: https://github.com/YadeWira/lizard-ex/actions/workflows/ci.yml/badge.svg "Continuous Integration"
 [ciLink]: https://github.com/YadeWira/lizard-ex/actions/workflows/ci.yml
 [relLink]: https://github.com/YadeWira/lizard-ex/releases/latest
+[relBadge]: doc/badge-release.svg "Latest release"
 
 [LZ4]: https://github.com/lz4/lz4
 [zlib]: https://github.com/madler/zlib
