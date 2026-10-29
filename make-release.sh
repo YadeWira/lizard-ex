@@ -32,6 +32,14 @@ if [ "$#" -ge 1 ] && [ "$1" != "$VERSION" ]; then
     exit 1
 fi
 
+# The README shows the latest release as text, and it has to be the version
+# being packaged: an out-of-date line is the first thing a visitor sees.
+if ! grep -q "Latest release | \[v$VERSION\]" README.md; then
+    echo "error: the README does not show v$VERSION as the latest release" >&2
+    echo "       update the 'Latest release' line before packaging." >&2
+    exit 1
+fi
+
 # NEWS must describe this version; tagging without an entry is how a release
 # ends up with no notes.
 if ! head -1 NEWS | grep -qx "lizard-ex v$VERSION"; then
