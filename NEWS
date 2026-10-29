@@ -14,6 +14,9 @@ Library:
 - `tests/test_blocks.c` builds that stream by hand (a stored block, then a
   compressed one that does not fit) and requires the decode to fail.  It
   overruns on 2.3.1 and passes here, at all 40 levels.
+- The debug level variable in the vendored entropy code is `g_lizardDebugLevel`
+  now instead of `g_debuglevel`, which is the name zstd uses: a program that
+  links both libraries got a duplicate symbol.  Reported by zpaq-std.
 - `tests/mkblock.c` and new fuzzer seeds: the block decoder is a different code
   path from the frame decoder (a level byte instead of a magic number) and the
   corpus barely reached it.  It now carries block streams at nine levels,

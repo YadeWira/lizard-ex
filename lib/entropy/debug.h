@@ -85,7 +85,7 @@ extern "C" {
 
 #if (DEBUGLEVEL>=2)
 #  include <stdio.h>
-extern int g_debuglevel; /* the variable is only declared,
+extern int g_lizardDebugLevel; /* the variable is only declared,
                             it actually lives in debug.c,
                             and is shared by the whole process.
                             It's not thread-safe.
@@ -93,11 +93,11 @@ extern int g_debuglevel; /* the variable is only declared,
                             on selective conditions (such as position in src) */
 
 #  define RAWLOG(l, ...) {                                      \
-                if (l<=g_debuglevel) {                          \
+                if (l<=g_lizardDebugLevel) {                          \
                     fprintf(stderr, __VA_ARGS__);               \
             }   }
 #  define DEBUGLOG(l, ...) {                                    \
-                if (l<=g_debuglevel) {                          \
+                if (l<=g_lizardDebugLevel) {                          \
                     fprintf(stderr, __FILE__ ": " __VA_ARGS__); \
                     fprintf(stderr, " \n");                     \
             }   }
